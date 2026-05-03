@@ -1,0 +1,94 @@
+# Custom Falco rules for the Automated Forensic Preservation System.
+# These rules detect suspicious container behaviour and trigger the agent webhook.
+#
+# Deploy alongside Falco's default ruleset; load with:
+#   falco -r /etc/falco/falco_rules.yaml -r /etc/falco/forensic-rules.yaml
+
+- rule: Suspicious Shell Spawned in Container
+  desc: A shell was spawned inside a container — possible interactive intrusion or script execution.
+  condition: >
+    spawned_process
+    and container
+    and proc.name in (bash, sh, zsh, dash, ksh, fish)
+    and not proc.pname in (bash, sh, zsh, dash, ksh, fish, sshd, sudo)
+  output: >
+    Shell spawned in container
+    (container_id=%container.id container_name=%container.name
+     user=%user.name proc=%proc.name parent=%proc.pname
+     cmdline=%proc.cmdline)
+  priority: WARNING
+  tags: [shell, container, forensic]
+
+- rule: Sensitive File Read in Container
+  desc: A process inside a container read a sensitive credential or secret file.
+  condition: >
+    open_read
+    and container
+    and fd.name in (/etc/shadow, /etc/passwd, /etc/sudoers,
+                    /proc/keys, /proc/key-users, /root/.ssh/id_rsa,
+                    /root/.ssh/authorized_keys)
+  output: >
+    Sensitive file read in container
+    (container_id=%container.id container_name=%container.name
+     file=%fd.name user=%user.name proc=%proc.name cmdline=%proc.cmdline)
+  priority: ERROR
+  tags: [credentials, container, forensic]
+
+- rule: Unexpected Network Outbound in Container
+  desc: A container initiated a new outbound TCP connection on an unexpected port.
+  condition: >
+    outbound
+    and container
+    and not fd.sport in (80, 443, 8080, 8443)
+    and fd.sip != "127.0.0.1"
+  output: >
+    Unexpected outbound connection from container
+    (container_id=%container.id container_name=%container.name
+     dst=%fd.rip:%fd.rport proto=%fd.l4proto proc=%proc.name)
+  priority: WARNING
+  tags: [network, container, forensic]
+
+- rule: File Write to Sensitive Path in Container
+  desc: A process wrote to /etc, /bin, /sbin, /usr/bin, or /usr/sbin inside a container.
+  condition: >
+    (open_write or rename or link)
+    and container
+    and (fd.name startswith /etc/ or
+         fd.name startswith /bin/ or
+         fd.name startswith /sbin/ or
+         fd.name startswith /usr/bin/ or
+         fd.name startswith /usr/sbin/)
+  output: >
+    Write to sensitive path in container
+    (container_id=%container.id container_name=%container.name
+     file=%fd.name user=%user.name proc=%proc.name cmdline=%proc.cmdline)
+  priority: ERROR
+  tags: [filesystem, container, forensic]
+
+- rule: Privilege Escalation Attempt in Container
+  desc: A process attempted setuid/setgid or capability manipulation.
+  condition: >
+    (syscall.type = setuid or syscall.type = setgid or syscall.type = capset)
+    and container
+    and user.uid != 0
+  output: >
+    Privilege escalation attempt in container
+    (container_id=%container.id container_name=%container.name
+     user=%user.name uid=%user.uid proc=%proc.name cmdline=%proc.cmdline)
+  priority: CRITICAL
+  tags: [privesc, container, forensic]
+
+- rule: Container Namespace Escape Attempt
+  desc: A process attempted to access host namespaces or the Docker socket.
+  condition: >
+    (open_read or open_write)
+    and container
+    and (fd.name = /var/run/docker.sock or
+         fd.name startswith /proc/1/ or
+         fd.name = /host/etc/shadow)
+  output: >
+    Possible namespace escape attempt
+    (container_id=%container.id container_name=%container.name
+     file=%fd.name user=%user.name proc=%proc.name cmdline=%proc.cmdline)
+  priority: CRITICAL
+  tags: [escape, container, forensic]

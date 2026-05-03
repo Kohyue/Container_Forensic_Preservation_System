@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Forensic Preservation System</title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+
+  <!-- ── Sidebar ───────────────────────────────────────────────────────── -->
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-brand">
+      <svg class="brand-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+      </svg>
+      <div class="brand-text">
+        <span class="brand-name">ForensicAgent</span>
+        <span class="brand-sub">P688 · MMU</span>
+      </div>
+    </div>
+
+    <nav class="sidebar-nav">
+      <a href="#dashboard" class="nav-item" data-section="dashboard">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+        Dashboard
+      </a>
+      <a href="#alerts" class="nav-item" data-section="alerts">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+        Alerts
+        <span class="nav-badge" id="nav-alerts-count"></span>
+      </a>
+      <a href="#evidence" class="nav-item" data-section="evidence">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14,2 14,8 20,8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10,9 9,9 8,9"/></svg>
+        Evidence
+        <span class="nav-badge" id="nav-evidence-count"></span>
+      </a>
+      <a href="#settings" class="nav-item" data-section="settings">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+        Settings
+      </a>
+    </nav>
+
+    <div class="sidebar-footer">
+      <div class="agent-status" id="agent-status">
+        <span class="status-dot" id="status-dot"></span>
+        <span id="status-label">Connecting…</span>
+      </div>
+      <div class="uptime-text" id="uptime-text"></div>
+    </div>
+  </aside>
+
+  <!-- ── Main ──────────────────────────────────────────────────────────── -->
+  <div class="layout">
+    <header class="topbar">
+      <button class="sidebar-toggle" id="sidebar-toggle" aria-label="Toggle sidebar">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+      </button>
+      <h1 class="page-title" id="page-title">Dashboard</h1>
+      <div class="topbar-right">
+        <span class="last-updated" id="last-updated"></span>
+        <button class="btn btn-icon" id="refresh-btn" title="Refresh" onclick="App.refresh()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+        </button>
+      </div>
+    </header>
+
+    <main class="main-content">
+
+      <!-- ── Dashboard ──────────────────────────────────────────────── -->
+      <section id="section-dashboard" class="section">
+        <div class="stat-grid">
+          <div class="stat-card stat-card--status">
+            <div class="stat-card-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+            </div>
+            <div class="stat-card-body">
+              <div class="stat-value" id="stat-status">—</div>
+              <div class="stat-label">Monitoring Status</div>
+            </div>
+            <div class="stat-card-sub" id="stat-node">—</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-card-icon stat-card-icon--alert">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+            </div>
+            <div class="stat-card-body">
+              <div class="stat-value" id="stat-alerts">—</div>
+              <div class="stat-label">Total Alerts</div>
+            </div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-card-icon stat-card-icon--evidence">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14,2 14,8 20,8"/></svg>
+            </div>
+            <div class="stat-card-body">
+              <div class="stat-value" id="stat-evidence">—</div>
+              <div class="stat-label">Evidence Packages</div>
+            </div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-card-icon stat-card-icon--uptime">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12,6 12,12 16,14"/></svg>
+            </div>
+            <div class="stat-card-body">
+              <div class="stat-value" id="stat-uptime">—</div>
+              <div class="stat-label">Uptime</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="dash-grid">
+          <div class="card">
+            <div class="card-header">
+              <span class="card-title">Recent Alerts</span>
+              <a href="#alerts" class="card-link" onclick="App.navigate('alerts')">View all →</a>
+            </div>
+            <div class="card-body" id="dash-recent-alerts">
+              <div class="empty-state">Loading…</div>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-header">
+              <span class="card-title">Alert Distribution</span>
+            </div>
+            <div class="card-body" id="dash-priority-chart">
+              <div class="empty-state">Loading…</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card mt-4">
+          <div class="card-header">
+            <span class="card-title">Recent Evidence Packages</span>
+            <a href="#evidence" class="card-link" onclick="App.navigate('evidence')">View all →</a>
+          </div>
+          <div class="card-body" id="dash-recent-evidence">
+            <div class="empty-state">Loading…</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ── Alerts ─────────────────────────────────────────────────── -->
+      <section id="section-alerts" class="section hidden">
+        <div class="filter-bar">
+          <div class="search-wrap">
+            <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            <input type="text" id="alert-search" class="search-input" placeholder="Search rule or container ID…">
+          </div>
+          <select id="alert-priority-filter" class="select-input">
+            <option value="">All priorities</option>
+            <option value="emergency">Emergency</option>
+            <option value="alert">Alert</option>
+            <option value="critical">Critical</option>
+            <option value="error">Error</option>
+            <option value="warning">Warning</option>
+            <option value="notice">Notice</option>
+            <option value="informational">Informational</option>
+            <option value="debug">Debug</option>
+          </select>
+          <button class="btn btn-primary" onclick="Alerts.load()">Apply</button>
+          <span class="result-count" id="alerts-count-label"></span>
+        </div>
+        <div class="card">
+          <div class="table-wrap">
+            <table class="data-table" id="alerts-table">
+              <thead>
+                <tr>
+                  <th>#</th>
+                  <th>Timestamp</th>
+                  <th>Container</th>
+                  <th>Rule</th>
+                  <th>Priority</th>
+                </tr>
+              </thead>
+              <tbody id="alerts-tbody">
+                <tr><td colspan="5" class="empty-state">Loading…</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <div class="pagination" id="alerts-pagination"></div>
+        </div>
+
+        <!-- Alert detail panel -->
+        <div class="detail-panel hidden" id="alert-detail-panel">
+          <div class="detail-panel-header">
+            <span class="detail-panel-title">Alert Detail</span>
+            <button class="btn btn-icon" onclick="Alerts.closeDetail()">✕</button>
+          </div>
+          <div class="detail-panel-body" id="alert-detail-body"></div>
+        </div>
+      </section>
+
+      <!-- ── Evidence ───────────────────────────────────────────────── -->
+      <section id="section-evidence" class="section hidden">
+        <div class="filter-bar">
+          <div class="search-wrap">
+            <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            <input type="text" id="evidence-search" class="search-input" placeholder="Search container ID or rule…">
+          </div>
+          <button class="btn btn-primary" onclick="Evidence.load()">Refresh</button>
+          <span class="result-count" id="evidence-count-label"></span>
+        </div>
+        <div id="evidence-grid" class="evidence-grid">
+          <div class="empty-state">Loading…</div>
+        </div>
+        <div class="pagination" id="evidence-pagination"></div>
+
+        <!-- Evidence detail panel -->
+        <div class="detail-panel hidden" id="evidence-detail-panel">
+          <div class="detail-panel-header">
+            <span class="detail-panel-title" id="evidence-detail-title">Evidence Package</span>
+            <button class="btn btn-icon" onclick="Evidence.closeDetail()">✕</button>
+          </div>
+          <div class="detail-panel-body" id="evidence-detail-body"></div>
+        </div>
+      </section>
+
+      <!-- ── Settings ───────────────────────────────────────────────── -->
+      <section id="section-settings" class="section hidden">
+        <div class="settings-grid">
+          <div class="card">
+            <div class="card-header"><span class="card-title">Agent Configuration</span></div>
+            <div class="card-body">
+              <div class="config-block" id="settings-config">Loading…</div>
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-header"><span class="card-title">Detection Rules</span></div>
+            <div class="card-body" id="settings-rules">
+              <div class="empty-state">Loading…</div>
+            </div>
+          </div>
+        </div>
+        <div class="card mt-4">
+          <div class="card-header"><span class="card-title">Agent Information</span></div>
+          <div class="card-body" id="settings-info">Loading…</div>
+        </div>
+      </section>
+
+    </main>
+  </div>
+
+  <!-- ── Toast container ───────────────────────────────────────────────── -->
+  <div id="toast-container" class="toast-container"></div>
+
+  <!-- ── Scripts ───────────────────────────────────────────────────────── -->
+  <script src="/js/api.js"></script>
+  <script src="/js/dashboard.js"></script>
+  <script src="/js/alerts.js"></script>
+  <script src="/js/evidence.js"></script>
+  <script src="/js/settings.js"></script>
+  <script src="/js/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,115 @@
+---
+# Kubernetes DaemonSet — deploys the forensic agent on every node.
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: forensic-agent
+  namespace: forensic-system
+  labels:
+    app: forensic-agent
+spec:
+  selector:
+    matchLabels:
+      app: forensic-agent
+  template:
+    metadata:
+      labels:
+        app: forensic-agent
+    spec:
+      serviceAccountName: forensic-agent
+      hostPID: true        # needed to inspect host-visible PIDs via /proc
+      hostNetwork: false
+      tolerations:
+        - operator: Exists  # run on all nodes including control-plane
+      containers:
+        - name: forensic-agent
+          image: forensic-agent:latest
+          imagePullPolicy: IfNotPresent
+          args:
+            - -config=/etc/forensic-agent/config.yaml
+          ports:
+            - name: webhook
+              containerPort: 8765
+              protocol: TCP
+          env:
+            - name: NODE_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: spec.nodeName
+          volumeMounts:
+            - name: config
+              mountPath: /etc/forensic-agent
+              readOnly: true
+            - name: evidence
+              mountPath: /var/forensics
+            - name: docker-sock
+              mountPath: /var/run/docker.sock
+              readOnly: false
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 500m
+              memory: 256Mi
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: 8765
+            initialDelaySeconds: 5
+            periodSeconds: 15
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: 8765
+            initialDelaySeconds: 3
+            periodSeconds: 10
+      volumes:
+        - name: config
+          configMap:
+            name: forensic-agent-config
+        - name: evidence
+          hostPath:
+            path: /var/forensics
+            type: DirectoryOrCreate
+        - name: docker-sock
+          hostPath:
+            path: /var/run/docker.sock
+---
+# Service — lets Falco reach the agent webhook on each node via ClusterIP.
+apiVersion: v1
+kind: Service
+metadata:
+  name: forensic-agent
+  namespace: forensic-system
+spec:
+  selector:
+    app: forensic-agent
+  ports:
+    - name: webhook
+      port: 8765
+      targetPort: 8765
+  clusterIP: None  # headless — Falco on each node contacts the local pod via hostNetwork or NodePort
+---
+# ConfigMap for the agent config file
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: forensic-agent-config
+  namespace: forensic-system
+data:
+  config.yaml: |
+    detector:
+      listen_addr: ":8765"
+      min_priority: "warning"
+    collector:
+      timeout_seconds: 30
+      collect_process: true
+      collect_logs: true
+      collect_network: true
+      collect_metadata: true
+      max_log_lines: 1000
+    repository:
+      base_path: "/var/forensics/evidence"
+    audit:
+      log_path: "/var/forensics/audit.log"

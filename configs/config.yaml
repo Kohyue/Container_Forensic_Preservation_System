@@ -1,0 +1,30 @@
+agent:
+  node_name: ""   # auto-detected from NODE_NAME env var if blank
+
+detector:
+  listen_addr: ":8765"
+  # Minimum Falco alert priority to trigger preservation.
+  # Values (low→high): debug, informational, notice, warning, error, critical, alert, emergency
+  min_priority: "warning"
+
+collector:
+  timeout_seconds: 30
+  collect_process: true
+  collect_logs: true
+  collect_network: true
+  collect_metadata: true
+  max_log_lines: 1000
+
+repository:
+  base_path: "/var/forensics/evidence"
+  # Set to 0 to disable automatic pruning
+  max_size_mb: 0
+
+audit:
+  log_path: "/var/forensics/audit.log"
+
+web:
+  # Dashboard web UI address
+  addr: ":8080"
+  # Path to the Falco rules file (read-only, shown in Settings page)
+  rules_path: "/etc/forensic-agent/falco-rules.yaml"

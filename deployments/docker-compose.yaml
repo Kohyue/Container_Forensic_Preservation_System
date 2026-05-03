@@ -1,0 +1,60 @@
+# Local test environment: Falco + forensic-agent + a vulnerable target container.
+# Usage:
+#   docker compose up -d
+#   docker compose exec target bash   # trigger alerts
+#   ls /var/forensics/evidence        # inspect captured evidence
+version: "3.9"
+
+services:
+  # The forensic preservation agent
+  forensic-agent:
+    image: forensic-agent:latest
+    build:
+      context: ..
+      dockerfile: Dockerfile
+    container_name: forensic-agent
+    restart: unless-stopped
+    pid: host
+    volumes:
+      - ../configs/config.yaml:/etc/forensic-agent/config.yaml:ro
+      - evidence:/var/forensics
+      - /var/run/docker.sock:/var/run/docker.sock
+    ports:
+      - "8765:8765"
+    environment:
+      - NODE_NAME=local
+
+  # Falco runtime security monitor
+  falco:
+    image: falcosecurity/falco-no-driver:latest
+    container_name: falco
+    restart: unless-stopped
+    privileged: true
+    pid: host
+    volumes:
+      - /var/run/docker.sock:/host/var/run/docker.sock
+      - /dev:/host/dev
+      - /proc:/host/proc:ro
+      - /boot:/host/boot:ro
+      - /lib/modules:/host/lib/modules:ro
+      - /usr:/host/usr:ro
+      - /etc:/host/etc:ro
+      - ../configs/falco-rules.yaml:/etc/falco/forensic-rules.yaml:ro
+      - ./falco.yaml:/etc/falco/falco.yaml:ro
+    depends_on:
+      - forensic-agent
+
+  # A minimal Alpine container used to simulate suspicious activity during testing.
+  target:
+    image: alpine:3.19
+    container_name: target
+    restart: unless-stopped
+    command: ["sleep", "infinity"]
+
+volumes:
+  evidence:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: /var/forensics
