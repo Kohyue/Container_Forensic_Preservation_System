@@ -40,6 +40,8 @@ services:
       - /lib/modules:/host/lib/modules:ro
       - /usr:/host/usr:ro
       - /etc:/host/etc:ro
+      - /sys/kernel/btf:/sys/kernel/btf:ro
+      - /sys/kernel/debug:/sys/kernel/debug:ro
       - ../configs/falco-rules.yaml:/etc/falco/forensic-rules.yaml:ro
       - ./falco.yaml:/etc/falco/falco.yaml:ro
     depends_on:
