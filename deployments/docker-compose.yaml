@@ -21,6 +21,7 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock
     ports:
       - "8765:8765"
+      - "8080:8080"
     environment:
       - NODE_NAME=local
 
