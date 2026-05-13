@@ -33,7 +33,7 @@ services:
     privileged: true
     pid: host
     volumes:
-      - /var/run/docker.sock:/host/var/run/docker.sock
+      - /var/run/docker.sock:/var/run/docker.sock
       - /dev:/host/dev
       - /proc:/host/proc:ro
       - /boot:/host/boot:ro

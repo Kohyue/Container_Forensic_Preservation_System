@@ -1,4 +1,15 @@
 # Custom Falco rules for the Automated Forensic Preservation System.
+# Engine smoke-test: fires whenever /etc/passwd is read anywhere (no container filter)
+- rule: Passwd Read Anywhere
+  desc: Smoke test - fires on any read of /etc/passwd regardless of container context.
+  condition: open_read and fd.name = /etc/passwd
+  output: >
+    passwd read (proc=%proc.name container_id=%container.id container_name=%container.name
+    cmdline=%proc.cmdline)
+  priority: WARNING
+  tags: [smoketest, forensic]
+
+
 # These rules detect suspicious container behaviour and trigger the agent webhook.
 #
 # Deploy alongside Falco's default ruleset; load with:
