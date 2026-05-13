@@ -51,7 +51,7 @@
 - rule: File Write to Sensitive Path in Container
   desc: A process wrote to /etc, /bin, /sbin, /usr/bin, or /usr/sbin inside a container.
   condition: >
-    (open_write or rename or link)
+    (open_write or evt.type = rename or evt.type = link)
     and container
     and (fd.name startswith /etc/ or
          fd.name startswith /bin/ or

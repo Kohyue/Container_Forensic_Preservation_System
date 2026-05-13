@@ -1,7 +1,7 @@
 # Falco configuration for local docker-compose testing.
 # Sends alerts as JSON webhooks to the forensic agent.
 
-rules_file:
+rules_files:
   - /etc/falco/falco_rules.yaml
   - /etc/falco/forensic-rules.yaml
 
@@ -28,3 +28,4 @@ stdout_output:
 
 program_output:
   enabled: false
+  program: "cat"
