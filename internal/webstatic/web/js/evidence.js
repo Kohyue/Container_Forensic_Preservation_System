@@ -1,15 +1,65 @@
 // Evidence section
 const Evidence = (() => {
-  let currentPage  = 0;
-  const PAGE_SIZE  = 24;
+  let currentPage   = 0;
+  const PAGE_SIZE   = 24;
   let totalPackages = 0;
-  let allPackages  = [];
+  let allPackages   = [];
+  let openPkgId     = null;   // ID of the currently open detail panel
+
+  // ── Read-state helpers (persisted in localStorage) ───────────────────────
+  const READ_KEY = 'fp_read_evidence';
+
+  function getReadSet() {
+    try { return new Set(JSON.parse(localStorage.getItem(READ_KEY) || '[]')); }
+    catch { return new Set(); }
+  }
+
+  function saveReadSet(set) {
+    localStorage.setItem(READ_KEY, JSON.stringify([...set]));
+  }
+
+  function markOneRead(id) {
+    const s = getReadSet();
+    s.add(id);
+    saveReadSet(s);
+    // Update card appearance without full re-render
+    const card = document.querySelector(`.evidence-card[data-pkg-id="${CSS.escape(id)}"]`);
+    if (card) {
+      card.classList.add('ev-card--read');
+      const dot = card.querySelector('.unread-dot');
+      if (dot) dot.style.display = 'none';
+    }
+    // Update panel button
+    const btn = document.getElementById('ev-mark-read-btn');
+    if (btn) {
+      btn.textContent = '✓ Read';
+      btn.className   = 'btn btn-sm btn-secondary';
+      btn.style.fontSize = '11px';
+      btn.style.padding  = '3px 10px';
+    }
+  }
+
+  function markAllCurrentRead() {
+    const s = getReadSet();
+    allPackages.forEach(p => s.add(p.id));
+    saveReadSet(s);
+    renderGrid(allPackages);
+    Toast.success('All visible evidence packages marked as read');
+  }
+
+  // ── Duration formatter ────────────────────────────────────────────────────
+  function fmtDuration(ms) {
+    if (!ms && ms !== 0) return null;
+    if (ms < 1000) return `${ms}ms`;
+    return `${(ms / 1000).toFixed(1)}s`;
+  }
 
   function fmtTs(ts) {
     if (!ts) return '—';
     return new Date(ts).toLocaleString();
   }
 
+  // ── Load ──────────────────────────────────────────────────────────────────
   async function load(page = 0) {
     currentPage = page;
     const grid = document.getElementById('evidence-grid');
@@ -31,19 +81,21 @@ const Evidence = (() => {
     }
   }
 
+  // ── Render grid ───────────────────────────────────────────────────────────
   function renderGrid(pkgs) {
-    const grid = document.getElementById('evidence-grid');
+    const grid    = document.getElementById('evidence-grid');
+    const readSet = getReadSet();
+
     if (!pkgs.length) {
       grid.innerHTML = '<div class="empty-state" style="grid-column:1/-1">No evidence packages captured yet.</div>';
       return;
     }
 
-    // Client-side search filter
     const q = document.getElementById('evidence-search')?.value.toLowerCase() || '';
     const filtered = q
       ? pkgs.filter(p =>
-          (p.container_id || '').toLowerCase().includes(q) ||
-          (p.trigger_rule || '').toLowerCase().includes(q) ||
+          (p.container_id   || '').toLowerCase().includes(q) ||
+          (p.trigger_rule   || '').toLowerCase().includes(q) ||
           (p.container_name || '').toLowerCase().includes(q))
       : pkgs;
 
@@ -52,47 +104,62 @@ const Evidence = (() => {
       return;
     }
 
-    grid.innerHTML = filtered.map(p => `
-      <div class="evidence-card" onclick="Evidence.openDetail('${esc(p.id)}')">
-        <div class="ev-header">
-          <span class="ev-id">${esc(short(p.container_id))}</span>
-          ${badge(p.trigger_priority)}
-        </div>
-        <div class="ev-body">
-          <div class="ev-row">
-            <span class="ev-key">Time</span>
-            <span class="ev-val">${fmtTs(p.captured_at)}</span>
+    grid.innerHTML = filtered.map(p => {
+      const isRead = readSet.has(p.id);
+      const dur    = fmtDuration(p.capture_duration_ms);
+      return `
+        <div class="evidence-card ${isRead ? 'ev-card--read' : ''}"
+             data-pkg-id="${esc(p.id)}"
+             onclick="Evidence.openDetail('${esc(p.id)}')">
+          <div class="ev-header">
+            <div style="display:flex;align-items:center;gap:6px">
+              <span class="unread-dot" style="${isRead ? 'display:none' : ''}"></span>
+              <span class="ev-id">${esc(short(p.container_id))}</span>
+            </div>
+            ${badge(p.trigger_priority)}
           </div>
-          ${p.container_name ? `<div class="ev-row">
-            <span class="ev-key">Name</span>
-            <span class="ev-val">${esc(p.container_name)}</span>
-          </div>` : ''}
-          <div class="ev-row">
-            <span class="ev-key">Rule</span>
-            <span class="ev-val ev-rule">${esc(p.trigger_rule || '—')}</span>
+          <div class="ev-body">
+            <div class="ev-row">
+              <span class="ev-key">Time</span>
+              <span class="ev-val">${fmtTs(p.captured_at)}</span>
+            </div>
+            ${p.container_name ? `<div class="ev-row">
+              <span class="ev-key">Name</span>
+              <span class="ev-val">${esc(p.container_name)}</span>
+            </div>` : ''}
+            <div class="ev-row">
+              <span class="ev-key">Rule</span>
+              <span class="ev-val ev-rule">${esc(p.trigger_rule || '—')}</span>
+            </div>
           </div>
-        </div>
-        <div class="ev-footer">
-          <span class="ev-files">${p.artifact_count ?? 0} artifact${p.artifact_count !== 1 ? 's' : ''}</span>
-        </div>
-      </div>`).join('');
+          <div class="ev-footer">
+            <span class="ev-files">${p.artifact_count ?? 0} artifact${p.artifact_count !== 1 ? 's' : ''}</span>
+            ${dur ? `<span class="duration-badge">${esc(dur)}</span>` : ''}
+          </div>
+        </div>`;
+    }).join('');
   }
 
+  // ── Pagination ────────────────────────────────────────────────────────────
   function renderPagination() {
     const el = document.getElementById('evidence-pagination');
     const totalPages = Math.ceil(totalPackages / PAGE_SIZE);
     if (totalPages <= 1) { el.innerHTML = ''; return; }
 
     let html = '';
-    if (currentPage > 0) html += `<button class="btn btn-secondary" onclick="Evidence.load(${currentPage - 1})">← Prev</button>`;
+    if (currentPage > 0)
+      html += `<button class="btn btn-secondary" onclick="Evidence.load(${currentPage - 1})">← Prev</button>`;
     for (let p = Math.max(0, currentPage - 2); p <= Math.min(totalPages - 1, currentPage + 2); p++) {
       html += `<button class="btn ${p === currentPage ? 'active' : 'btn-secondary'}" onclick="Evidence.load(${p})">${p + 1}</button>`;
     }
-    if (currentPage < totalPages - 1) html += `<button class="btn btn-secondary" onclick="Evidence.load(${currentPage + 1})">Next →</button>`;
+    if (currentPage < totalPages - 1)
+      html += `<button class="btn btn-secondary" onclick="Evidence.load(${currentPage + 1})">Next →</button>`;
     el.innerHTML = html;
   }
 
+  // ── Detail panel ──────────────────────────────────────────────────────────
   async function openDetail(id) {
+    openPkgId = id;
     const panel = document.getElementById('evidence-detail-panel');
     const body  = document.getElementById('evidence-detail-body');
     const title = document.getElementById('evidence-detail-title');
@@ -102,17 +169,32 @@ const Evidence = (() => {
     panel.classList.remove('hidden');
 
     try {
-      const pkg = await API.getEvidence(id);
-      title.textContent = short(pkg.container_id) || id;
+      const pkg    = await API.getEvidence(id);
+      const isRead = getReadSet().has(id);
+
+      title.innerHTML = `
+        ${esc(short(pkg.container_id) || id)}
+        <button class="btn btn-sm ${isRead ? 'btn-secondary' : 'btn-success'}"
+                id="ev-mark-read-btn"
+                onclick="Evidence.markReadFromPanel('${esc(id)}')"
+                style="margin-left:12px;font-size:11px;padding:3px 10px">
+          ${isRead ? '✓ Read' : 'Mark as Read'}
+        </button>`;
+
       renderDetail(pkg);
     } catch (e) {
       body.innerHTML = `<div class="empty-state">Error: ${esc(e.message)}</div>`;
     }
   }
 
+  function markReadFromPanel(id) {
+    markOneRead(id);
+  }
+
   function renderDetail(pkg) {
     const body = document.getElementById('evidence-detail-body');
-    const m = pkg.manifest || {};
+    const m    = pkg.manifest || {};
+    const dur  = fmtDuration(pkg.capture_duration_ms);
 
     const fileList = (pkg.files || []).map(f => `
       <button class="file-btn" onclick="Evidence.viewFile('${esc(pkg.id)}', '${esc(f)}', this)">
@@ -151,6 +233,10 @@ const Evidence = (() => {
         <div class="detail-field-label">Priority</div>
         <div class="detail-field-value">${badge(pkg.trigger_priority)}</div>
       </div>
+      ${dur ? `<div class="detail-field">
+        <div class="detail-field-label">Capture Duration</div>
+        <div class="detail-field-value" style="color:var(--blue);font-weight:600">${esc(dur)}</div>
+      </div>` : ''}
       ${m.manifest_sha256 ? `<div class="detail-field">
         <div class="detail-field-label">Manifest SHA-256</div>
         <div class="detail-field-value mono" style="font-size:11px;color:var(--text-2)">${esc(m.manifest_sha256)}</div>
@@ -164,8 +250,8 @@ const Evidence = (() => {
       <div id="file-viewer-wrap"></div>`;
   }
 
+  // ── File viewer ───────────────────────────────────────────────────────────
   async function viewFile(pkgId, filename, btn) {
-    // Toggle active state on buttons
     document.querySelectorAll('.file-btn').forEach(b => b.classList.remove('active'));
     btn.classList.add('active');
 
@@ -174,8 +260,8 @@ const Evidence = (() => {
 
     try {
       const content = await API.getFile(pkgId, filename);
-      const isJSON = filename.endsWith('.json');
-      let display = content;
+      const isJSON  = filename.endsWith('.json');
+      let display   = content;
       if (isJSON) {
         try { display = JSON.stringify(JSON.parse(content), null, 2); } catch (_) {}
       }
@@ -194,15 +280,21 @@ const Evidence = (() => {
 
   function closeDetail() {
     document.getElementById('evidence-detail-panel').classList.add('hidden');
+    openPkgId = null;
+    const title = document.getElementById('evidence-detail-title');
+    if (title) title.textContent = 'Evidence Package';
   }
 
-  // Client-side search on enter
+  // ── DOMContentLoaded wiring ───────────────────────────────────────────────
   document.addEventListener('DOMContentLoaded', () => {
     const si = document.getElementById('evidence-search');
     if (si) si.addEventListener('keydown', e => {
       if (e.key === 'Enter') renderGrid(allPackages);
     });
+
+    const markAllBtn = document.getElementById('evidence-mark-all-read');
+    if (markAllBtn) markAllBtn.addEventListener('click', markAllCurrentRead);
   });
 
-  return { load, openDetail, viewFile, closeDetail };
+  return { load, openDetail, viewFile, closeDetail, markReadFromPanel };
 })();

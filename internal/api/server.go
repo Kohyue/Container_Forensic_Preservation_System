@@ -5,6 +5,7 @@ import (
 	"io/fs"
 	"log/slog"
 	"net/http"
+	"sync"
 	"time"
 
 	"forensic-preservation/internal/config"
@@ -14,6 +15,7 @@ import (
 // Server serves the web dashboard and REST API.
 type Server struct {
 	cfg        *config.Config
+	mu         sync.RWMutex // protects runtime config mutations
 	logger     *slog.Logger
 	startedAt  time.Time
 	httpServer *http.Server
@@ -24,14 +26,18 @@ func NewServer(cfg *config.Config, logger *slog.Logger, startedAt time.Time) *Se
 
 	mux := http.NewServeMux()
 
-	// REST API routes
-	mux.HandleFunc("/api/v1/status", s.handleStatus)
-	mux.HandleFunc("/api/v1/stats", s.handleStats)
-	mux.HandleFunc("/api/v1/alerts", s.handleAlerts)
-	mux.HandleFunc("/api/v1/evidence", s.handleListEvidence)
+	// REST API — read-only
+	mux.HandleFunc("/api/v1/status",  s.handleStatus)
+	mux.HandleFunc("/api/v1/stats",   s.handleStats)
+	mux.HandleFunc("/api/v1/alerts",  s.handleAlerts)
+	mux.HandleFunc("/api/v1/evidence",  s.handleListEvidence)
 	mux.HandleFunc("/api/v1/evidence/", s.handleEvidence)
-	mux.HandleFunc("/api/v1/config", s.handleGetConfig)
-	mux.HandleFunc("/api/v1/rules", s.handleGetRules)
+	mux.HandleFunc("/api/v1/config",  s.handleGetConfig)
+	mux.HandleFunc("/api/v1/rules",   s.handleGetRules)
+
+	// REST API — runtime config updates (POST)
+	mux.HandleFunc("/api/v1/config/collector", s.handleUpdateCollector)
+	mux.HandleFunc("/api/v1/config/schedule",  s.handleUpdateSchedule)
 
 	// Static web files — serve from the embedded FS
 	webFS, err := fs.Sub(webstatic.FS, "web")

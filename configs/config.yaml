@@ -28,3 +28,11 @@ web:
   addr: ":8080"
   # Path to the Falco rules file (read-only, shown in Settings page)
   rules_path: "/etc/forensic-agent/falco-rules.yaml"
+
+schedule:
+  # Set to true to queue alerts and process them at a regular interval
+  # instead of capturing immediately on each alert.
+  enabled: false
+  # How often (in seconds) the scheduler processes queued alerts.
+  # Minimum 10 seconds. Default 300 (5 minutes).
+  interval_seconds: 300

@@ -160,6 +160,7 @@
             <option value="debug">Debug</option>
           </select>
           <button class="btn btn-primary" onclick="Alerts.load()">Apply</button>
+          <button class="btn btn-secondary" id="alerts-mark-all-read" title="Mark all visible alerts as read">✓ Mark all read</button>
           <span class="result-count" id="alerts-count-label"></span>
         </div>
         <div class="card">
@@ -167,6 +168,7 @@
             <table class="data-table" id="alerts-table">
               <thead>
                 <tr>
+                  <th style="width:8px;padding-right:0"></th>
                   <th>#</th>
                   <th>Timestamp</th>
                   <th>Container</th>
@@ -175,7 +177,7 @@
                 </tr>
               </thead>
               <tbody id="alerts-tbody">
-                <tr><td colspan="5" class="empty-state">Loading…</td></tr>
+                <tr><td colspan="6" class="empty-state">Loading…</td></tr>
               </tbody>
             </table>
           </div>
@@ -185,7 +187,7 @@
         <!-- Alert detail panel -->
         <div class="detail-panel hidden" id="alert-detail-panel">
           <div class="detail-panel-header">
-            <span class="detail-panel-title">Alert Detail</span>
+            <span class="detail-panel-title" id="alert-detail-title">Alert Detail</span>
             <button class="btn btn-icon" onclick="Alerts.closeDetail()">✕</button>
           </div>
           <div class="detail-panel-body" id="alert-detail-body"></div>
@@ -200,6 +202,7 @@
             <input type="text" id="evidence-search" class="search-input" placeholder="Search container ID or rule…">
           </div>
           <button class="btn btn-primary" onclick="Evidence.load()">Refresh</button>
+          <button class="btn btn-secondary" id="evidence-mark-all-read" title="Mark all visible packages as read">✓ Mark all read</button>
           <span class="result-count" id="evidence-count-label"></span>
         </div>
         <div id="evidence-grid" class="evidence-grid">
@@ -233,6 +236,29 @@
             </div>
           </div>
         </div>
+
+        <!-- Editable settings row -->
+        <div class="settings-grid mt-4">
+          <div class="card">
+            <div class="card-header">
+              <span class="card-title">Data Collection</span>
+              <span style="font-size:11px;color:var(--text-3)">Changes take effect immediately</span>
+            </div>
+            <div class="card-body" id="settings-collection">
+              <div class="empty-state">Loading…</div>
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-header">
+              <span class="card-title">Capture Mode</span>
+              <span style="font-size:11px;color:var(--text-3)">Changes take effect immediately</span>
+            </div>
+            <div class="card-body" id="settings-capture-mode">
+              <div class="empty-state">Loading…</div>
+            </div>
+          </div>
+        </div>
+
         <div class="card mt-4">
           <div class="card-header"><span class="card-title">Agent Information</span></div>
           <div class="card-body" id="settings-info">Loading…</div>

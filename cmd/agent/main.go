@@ -19,6 +19,12 @@ import (
 	"forensic-preservation/internal/repository"
 )
 
+// captureRequest holds a queued alert for scheduled batch processing.
+type captureRequest struct {
+	alert      *detector.FalcoAlert
+	receivedAt time.Time
+}
+
 func main() {
 	configPath := flag.String("config", "/etc/forensic-agent/config.yaml", "path to config file")
 	flag.Parse()
@@ -51,15 +57,20 @@ func main() {
 	}})
 
 	startedAt := time.Now().UTC()
-	handler := buildHandler(cfg, logger, auditLog)
 
+	// Buffered queue absorbs alert bursts in scheduled mode.
+	captureQueue := make(chan captureRequest, 500)
+
+	handler    := buildHandler(cfg, logger, auditLog, captureQueue)
 	webhookSrv := detector.NewServer(cfg.Detector.ListenAddr, cfg.Detector.MinPriority, handler, logger)
 	webSrv     := api.NewServer(cfg, logger, startedAt)
 
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
 
-	// Start both servers concurrently; either failing logs an error.
+	// Scheduler goroutine: always running, no-op when schedule mode is disabled.
+	go runScheduler(ctx, captureQueue, cfg, logger, auditLog)
+
 	go func() {
 		if err := webSrv.Start(ctx); err != nil {
 			logger.Error("web server error", "err", err)
@@ -74,8 +85,23 @@ func main() {
 	logger.Info("agent stopped")
 }
 
-// buildHandler returns the AlertHandler closure that runs the full preservation pipeline.
-func buildHandler(cfg *config.Config, logger *slog.Logger, auditLog *audit.Logger) detector.AlertHandler {
+// runCapture executes the full evidence collection and preservation pipeline
+// for a single alert. captureStart is measured at the top so the duration
+// field in the manifest includes both collection and preservation steps.
+func runCapture(ctx context.Context, cfg *config.Config, logger *slog.Logger, auditLog *audit.Logger, alert *detector.FalcoAlert) {
+	containerID := alert.ContainerID()
+	captureStart := time.Now()
+	captureAt   := captureStart.UTC()
+
+	pkg, err := repository.Create(cfg.Repository.BasePath, containerID, captureAt)
+	if err != nil {
+		logger.Error("failed to create evidence package", "container_id", containerID, "err", err)
+		auditLog.Log(audit.CaptureFailure(containerID, fmt.Errorf("create package: %w", err)))
+		return
+	}
+	auditLog.Log(audit.CaptureStarted(containerID, pkg.Dir))
+
+	// Read collector options fresh each time so runtime Settings changes take effect.
 	collectOpts := collector.Options{
 		CollectProcess:  cfg.Collector.CollectProcess,
 		CollectLogs:     cfg.Collector.CollectLogs,
@@ -84,6 +110,39 @@ func buildHandler(cfg *config.Config, logger *slog.Logger, auditLog *audit.Logge
 		MaxLogLines:     cfg.Collector.MaxLogLines,
 	}
 
+	collectCtx, cancel := context.WithTimeout(ctx, cfg.Collector.Timeout())
+	defer cancel()
+
+	ev, collectErr := collector.Collect(collectCtx, containerID, collectOpts)
+	if collectErr != nil {
+		// Partial evidence is still preserved — log but continue.
+		logger.Warn("partial collection", "container_id", containerID, "err", collectErr)
+	}
+
+	manifestHash, err := preserver.Preserve(pkg, ev, alert.Rule, alert.Priority, captureStart)
+	if err != nil {
+		logger.Error("preservation failed", "container_id", containerID, "err", err)
+		auditLog.Log(audit.CaptureFailure(containerID, err))
+		return
+	}
+
+	auditLog.Log(audit.CaptureSuccess(containerID, pkg.Dir, map[string]string{
+		"rule":     alert.Rule,
+		"priority": alert.Priority,
+	}))
+	auditLog.Log(audit.EvidenceStored(containerID, pkg.Dir, manifestHash))
+
+	logger.Info("evidence preserved",
+		"container_id", containerID,
+		"evidence_dir", pkg.Dir,
+		"manifest_sha256", manifestHash,
+		"duration_ms", time.Since(captureStart).Milliseconds(),
+	)
+}
+
+// buildHandler returns the AlertHandler that either queues the alert for
+// scheduled processing or runs the capture pipeline immediately.
+func buildHandler(cfg *config.Config, logger *slog.Logger, auditLog *audit.Logger, queue chan<- captureRequest) detector.AlertHandler {
 	return func(ctx context.Context, alert *detector.FalcoAlert) {
 		containerID := alert.ContainerID()
 		auditLog.Log(audit.AlertReceived(containerID, alert.Rule, alert.Priority))
@@ -94,46 +153,63 @@ func buildHandler(cfg *config.Config, logger *slog.Logger, auditLog *audit.Logge
 			"priority", alert.Priority,
 		)
 
-		captureAt := time.Now().UTC()
-
-		// Create evidence package directory.
-		pkg, err := repository.Create(cfg.Repository.BasePath, containerID, captureAt)
-		if err != nil {
-			logger.Error("failed to create evidence package", "container_id", containerID, "err", err)
-			auditLog.Log(audit.CaptureFailure(containerID, fmt.Errorf("create package: %w", err)))
+		if cfg.Schedule.Enabled {
+			// Scheduled mode: enqueue and let the scheduler batch-process.
+			select {
+			case queue <- captureRequest{alert: alert, receivedAt: time.Now()}:
+				logger.Info("alert queued for scheduled capture",
+					"container_id", containerID,
+					"queue_len", len(queue),
+				)
+			default:
+				logger.Warn("capture queue full, alert dropped", "container_id", containerID)
+			}
 			return
 		}
 
-		auditLog.Log(audit.CaptureStarted(containerID, pkg.Dir))
+		// Automated mode: run immediately in a goroutine.
+		go runCapture(ctx, cfg, logger, auditLog, alert)
+	}
+}
 
-		// Collect volatile evidence with a timeout.
-		collectCtx, cancel := context.WithTimeout(ctx, cfg.Collector.Timeout())
-		defer cancel()
+// runScheduler drains the capture queue at the configured interval.
+// It polls every 10 seconds so interval changes from the Settings UI take
+// effect without a restart. It is a no-op when schedule mode is disabled.
+func runScheduler(ctx context.Context, queue <-chan captureRequest, cfg *config.Config, logger *slog.Logger, auditLog *audit.Logger) {
+	ticker := time.NewTicker(10 * time.Second)
+	defer ticker.Stop()
 
-		ev, collectErr := collector.Collect(collectCtx, containerID, collectOpts)
-		if collectErr != nil {
-			// Partial evidence is still preserved — log error but continue.
-			logger.Warn("partial collection", "container_id", containerID, "err", collectErr)
-		}
+	// Initialise lastRun so the first batch fires immediately if enabled.
+	lastRun := time.Now().Add(-cfg.Schedule.Interval())
 
-		// Write evidence files and build the integrity manifest.
-		manifestHash, err := preserver.Preserve(pkg, ev, alert.Rule, alert.Priority)
-		if err != nil {
-			logger.Error("preservation failed", "container_id", containerID, "err", err)
-			auditLog.Log(audit.CaptureFailure(containerID, err))
+	for {
+		select {
+		case <-ctx.Done():
 			return
+		case <-ticker.C:
+			if !cfg.Schedule.Enabled {
+				continue
+			}
+			if time.Since(lastRun) < cfg.Schedule.Interval() {
+				continue
+			}
+			lastRun = time.Now()
+
+			count := 0
+		DRAIN:
+			for {
+				select {
+				case req := <-queue:
+					runCapture(ctx, cfg, logger, auditLog, req.alert)
+					count++
+				default:
+					break DRAIN
+				}
+			}
+
+			if count > 0 {
+				logger.Info("scheduled capture batch complete", "count", count)
+			}
 		}
-
-		auditLog.Log(audit.CaptureSuccess(containerID, pkg.Dir, map[string]string{
-			"rule":     alert.Rule,
-			"priority": alert.Priority,
-		}))
-		auditLog.Log(audit.EvidenceStored(containerID, pkg.Dir, manifestHash))
-
-		logger.Info("evidence preserved",
-			"container_id", containerID,
-			"evidence_dir", pkg.Dir,
-			"manifest_sha256", manifestHash,
-		)
 	}
 }

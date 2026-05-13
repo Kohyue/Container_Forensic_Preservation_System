@@ -167,14 +167,15 @@ func (s *Server) handleAlerts(w http.ResponseWriter, r *http.Request) {
 // ── /api/v1/evidence ─────────────────────────────────────────────────────────
 
 type evidenceListItem struct {
-	ID            string    `json:"id"`
-	ContainerID   string    `json:"container_id"`
-	ContainerName string    `json:"container_name"`
-	CapturedAt    time.Time `json:"captured_at"`
-	TriggerRule   string    `json:"trigger_rule"`
-	TriggerPrio   string    `json:"trigger_priority"`
-	ArtifactCount int       `json:"artifact_count"`
-	Dir           string    `json:"dir"`
+	ID                string    `json:"id"`
+	ContainerID       string    `json:"container_id"`
+	ContainerName     string    `json:"container_name"`
+	CapturedAt        time.Time `json:"captured_at"`
+	TriggerRule       string    `json:"trigger_rule"`
+	TriggerPrio       string    `json:"trigger_priority"`
+	ArtifactCount     int       `json:"artifact_count"`
+	CaptureDurationMs int64     `json:"capture_duration_ms"`
+	Dir               string    `json:"dir"`
 }
 
 type evidenceListResponse struct {
@@ -224,7 +225,6 @@ func (s *Server) handleEvidence(w http.ResponseWriter, r *http.Request) {
 	parts := strings.SplitN(rest, "/file/", 2)
 	pkgID := parts[0]
 
-	// Validate: only allow alphanumeric, underscore, hyphen, dots (the timestamp_id format)
 	if !isSafeID(pkgID) {
 		writeError(w, http.StatusBadRequest, "invalid evidence ID")
 		return
@@ -244,7 +244,6 @@ func (s *Server) handleEvidence(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		fullPath := filepath.Join(pkgDir, filename)
-		// Verify path is still within pkgDir
 		if !strings.HasPrefix(fullPath, pkgDir+string(filepath.Separator)) &&
 			fullPath != pkgDir {
 			writeError(w, http.StatusBadRequest, "invalid path")
@@ -277,6 +276,90 @@ func (s *Server) handleEvidence(w http.ResponseWriter, r *http.Request) {
 
 func (s *Server) handleGetConfig(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, s.cfg)
+}
+
+// ── /api/v1/config/collector (POST) ──────────────────────────────────────────
+
+type collectorUpdateRequest struct {
+	CollectProcess  *bool `json:"collect_process"`
+	CollectLogs     *bool `json:"collect_logs"`
+	CollectNetwork  *bool `json:"collect_network"`
+	CollectMetadata *bool `json:"collect_metadata"`
+	MaxLogLines     *int  `json:"max_log_lines"`
+	TimeoutSeconds  *int  `json:"timeout_seconds"`
+}
+
+func (s *Server) handleUpdateCollector(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		writeError(w, http.StatusMethodNotAllowed, "POST required")
+		return
+	}
+	var req collectorUpdateRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeError(w, http.StatusBadRequest, "invalid JSON: "+err.Error())
+		return
+	}
+
+	s.mu.Lock()
+	if req.CollectProcess != nil {
+		s.cfg.Collector.CollectProcess = *req.CollectProcess
+	}
+	if req.CollectLogs != nil {
+		s.cfg.Collector.CollectLogs = *req.CollectLogs
+	}
+	if req.CollectNetwork != nil {
+		s.cfg.Collector.CollectNetwork = *req.CollectNetwork
+	}
+	if req.CollectMetadata != nil {
+		s.cfg.Collector.CollectMetadata = *req.CollectMetadata
+	}
+	if req.MaxLogLines != nil && *req.MaxLogLines > 0 {
+		s.cfg.Collector.MaxLogLines = *req.MaxLogLines
+	}
+	if req.TimeoutSeconds != nil && *req.TimeoutSeconds > 0 {
+		s.cfg.Collector.TimeoutSeconds = *req.TimeoutSeconds
+	}
+	saveErr := s.cfg.Save()
+	s.mu.Unlock()
+
+	if saveErr != nil {
+		s.logger.Warn("collector config updated in memory but could not persist to disk", "err", saveErr)
+	}
+	writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
+}
+
+// ── /api/v1/config/schedule (POST) ───────────────────────────────────────────
+
+type scheduleUpdateRequest struct {
+	Enabled         *bool `json:"enabled"`
+	IntervalSeconds *int  `json:"interval_seconds"`
+}
+
+func (s *Server) handleUpdateSchedule(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		writeError(w, http.StatusMethodNotAllowed, "POST required")
+		return
+	}
+	var req scheduleUpdateRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeError(w, http.StatusBadRequest, "invalid JSON: "+err.Error())
+		return
+	}
+
+	s.mu.Lock()
+	if req.Enabled != nil {
+		s.cfg.Schedule.Enabled = *req.Enabled
+	}
+	if req.IntervalSeconds != nil && *req.IntervalSeconds >= 10 {
+		s.cfg.Schedule.IntervalSeconds = *req.IntervalSeconds
+	}
+	saveErr := s.cfg.Save()
+	s.mu.Unlock()
+
+	if saveErr != nil {
+		s.logger.Warn("schedule config updated in memory but could not persist to disk", "err", saveErr)
+	}
+	writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
 }
 
 // ── /api/v1/rules ─────────────────────────────────────────────────────────────
@@ -327,7 +410,8 @@ func (s *Server) readAlertEntries() []audit.Entry {
 	return entries
 }
 
-// listEvidencePackages scans the base path and returns all valid evidence packages, newest first.
+// listEvidencePackages scans the base path and returns all valid evidence
+// packages, newest first.
 func (s *Server) listEvidencePackages() []evidenceListItem {
 	entries, err := os.ReadDir(s.cfg.Repository.BasePath)
 	if err != nil {
@@ -344,7 +428,6 @@ func (s *Server) listEvidencePackages() []evidenceListItem {
 		items = append(items, buildListItem(e.Name(), pkgDir, manifest))
 	}
 
-	// Sort newest first
 	sort.Slice(items, func(i, j int) bool {
 		return items[i].CapturedAt.After(items[j].CapturedAt)
 	})
@@ -354,12 +437,13 @@ func (s *Server) listEvidencePackages() []evidenceListItem {
 func buildListItem(id, dir string, m *preserver.Manifest) evidenceListItem {
 	item := evidenceListItem{ID: id, Dir: dir}
 	if m != nil {
-		item.ContainerID = m.ContainerID
-		item.ContainerName = m.ContainerName
-		item.CapturedAt = m.CapturedAt
-		item.TriggerRule = m.TriggerRule
-		item.TriggerPrio = m.TriggerPrio
-		item.ArtifactCount = len(m.Artifacts)
+		item.ContainerID       = m.ContainerID
+		item.ContainerName     = m.ContainerName
+		item.CapturedAt        = m.CapturedAt
+		item.TriggerRule       = m.TriggerRule
+		item.TriggerPrio       = m.TriggerPrio
+		item.ArtifactCount     = len(m.Artifacts)
+		item.CaptureDurationMs = m.CaptureDurationMs
 	}
 	return item
 }
@@ -416,8 +500,8 @@ func isSafeFilename(s string) bool {
 	return true
 }
 
-// parseFalcoRulesYAML does a minimal parse of a Falco YAML rules file to extract rule metadata.
-// It avoids pulling in a full YAML library for this secondary purpose.
+// parseFalcoRulesYAML does a minimal parse of a Falco YAML rules file to
+// extract rule metadata without pulling in a full YAML library.
 func parseFalcoRulesYAML(content string) []ruleEntry {
 	var rules []ruleEntry
 	var current *ruleEntry

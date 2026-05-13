@@ -17,13 +17,14 @@ import (
 
 // ManifestEntry records one artifact in the evidence manifest.
 type ManifestEntry struct {
-	Filename  string    `json:"filename"`
-	SHA256    string    `json:"sha256"`
-	SizeBytes int64     `json:"size_bytes"`
+	Filename   string    `json:"filename"`
+	SHA256     string    `json:"sha256"`
+	SizeBytes  int64     `json:"size_bytes"`
 	CapturedAt time.Time `json:"captured_at"`
 }
 
-// Manifest is the top-level manifest written as manifest.json inside the evidence package.
+// Manifest is the top-level manifest written as manifest.json inside the
+// evidence package.
 type Manifest struct {
 	SchemaVersion string          `json:"schema_version"`
 	ContainerID   string          `json:"container_id"`
@@ -31,12 +32,17 @@ type Manifest struct {
 	CapturedAt    time.Time       `json:"captured_at"`
 	TriggerRule   string          `json:"trigger_rule"`
 	TriggerPrio   string          `json:"trigger_priority"`
-	Artifacts     []ManifestEntry `json:"artifacts"`
-	ManifestSHA256 string         `json:"manifest_sha256,omitempty"`
+	// CaptureDurationMs is the total time in milliseconds from when the
+	// capture pipeline started to when the manifest was finalised.
+	CaptureDurationMs int64           `json:"capture_duration_ms,omitempty"`
+	Artifacts         []ManifestEntry `json:"artifacts"`
+	ManifestSHA256    string          `json:"manifest_sha256,omitempty"`
 }
 
-// Preserve writes evidence files to pkg, builds a manifest, and returns the manifest hash.
-func Preserve(pkg *repository.Package, ev *collector.Evidence, rule, priority string) (string, error) {
+// Preserve writes evidence files to pkg, builds a manifest, and returns the
+// manifest hash. captureStart is the timestamp recorded when the capture
+// pipeline began; it is used to compute CaptureDurationMs.
+func Preserve(pkg *repository.Package, ev *collector.Evidence, rule, priority string, captureStart time.Time) (string, error) {
 	capturedAt := time.Now().UTC()
 
 	// Write each artifact to disk.
@@ -83,6 +89,9 @@ func Preserve(pkg *repository.Package, ev *collector.Evidence, rule, priority st
 			CapturedAt: capturedAt,
 		})
 	}
+
+	// Record how long the capture took up to this point.
+	manifest.CaptureDurationMs = time.Since(captureStart).Milliseconds()
 
 	// Serialise manifest without its own hash first.
 	manifestJSON, err := json.MarshalIndent(manifest, "", "  ")
