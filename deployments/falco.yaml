@@ -1,6 +1,9 @@
 # Falco configuration for local docker-compose testing.
 # Sends alerts as JSON webhooks to the forensic agent.
 
+engine:
+  kind: modern_ebpf
+
 rules_files:
   - /etc/falco/falco_rules.yaml
   - /etc/falco/forensic-rules.yaml

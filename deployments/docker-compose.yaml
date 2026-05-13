@@ -32,8 +32,6 @@ services:
     restart: unless-stopped
     privileged: true
     pid: host
-    environment:
-      - FALCO_DRIVER=modern_ebpf
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
       - /dev:/host/dev
