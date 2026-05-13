@@ -12,10 +12,6 @@ log_stderr: true
 log_syslog: false
 log_level: info
 
-outputs:
-  rate: 1
-  max_burst: 1000
-
 # Send alerts to the forensic agent webhook
 http_output:
   enabled: true
@@ -25,7 +21,3 @@ http_output:
 # Also print to stdout for debugging
 stdout_output:
   enabled: true
-
-program_output:
-  enabled: false
-  program: "cat"

@@ -32,6 +32,7 @@ services:
     restart: unless-stopped
     privileged: true
     pid: host
+    command: ["falco", "--modern-bpf", "-c", "/etc/falco/falco.yaml"]
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
       - /dev:/host/dev
