@@ -32,6 +32,7 @@ const Alerts = (() => {
       if (tr.dataset.alertKey === key) tr.classList.add('row-read');
     });
     updateUnreadDot(key, true);
+    updateNavBadges();
   }
 
   function markAllCurrentRead() {
@@ -40,6 +41,7 @@ const Alerts = (() => {
     saveReadSet(s);
     renderRows(currentAlerts);   // re-render with read styles applied
     Toast.success('All visible alerts marked as read');
+    updateNavBadges();
   }
 
   function updateUnreadDot(key, isRead) {

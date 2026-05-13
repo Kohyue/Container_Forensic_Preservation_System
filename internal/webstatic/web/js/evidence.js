@@ -37,6 +37,7 @@ const Evidence = (() => {
       btn.style.fontSize = '11px';
       btn.style.padding  = '3px 10px';
     }
+    updateNavBadges();
   }
 
   function markAllCurrentRead() {
@@ -45,6 +46,7 @@ const Evidence = (() => {
     saveReadSet(s);
     renderGrid(allPackages);
     Toast.success('All visible evidence packages marked as read');
+    updateNavBadges();
   }
 
   // ── Duration formatter ────────────────────────────────────────────────────

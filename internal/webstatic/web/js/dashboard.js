@@ -58,10 +58,12 @@ const Dashboard = (() => {
     document.getElementById('stat-alerts').textContent   = s.total_alerts  ?? '—';
     document.getElementById('stat-evidence').textContent = s.total_evidence ?? '—';
 
+    // Store totals on the elements so updateNavBadges() can read them later
     const ab = document.getElementById('nav-alerts-count');
     const eb = document.getElementById('nav-evidence-count');
-    if (s.total_alerts > 0) { ab.textContent = s.total_alerts; ab.classList.add('visible'); }
-    if (s.total_evidence > 0) { eb.textContent = s.total_evidence; eb.classList.add('visible'); }
+    if (ab) ab.dataset.total = s.total_alerts  || 0;
+    if (eb) eb.dataset.total = s.total_evidence || 0;
+    updateNavBadges();
   }
 
   function renderRecentAlerts(alerts) {
@@ -134,6 +136,30 @@ function short(id) {
 function badge(priority) {
   const p = (priority || 'unknown').toLowerCase();
   return `<span class="badge badge-${p}">${p}</span>`;
+}
+
+// ── Sidebar badge updater (global, called by alerts/evidence after marking read) ──
+function updateNavBadges() {
+  const ab = document.getElementById('nav-alerts-count');
+  const eb = document.getElementById('nav-evidence-count');
+
+  const totalAlerts   = parseInt(ab?.dataset.total, 10) || 0;
+  const totalEvidence = parseInt(eb?.dataset.total, 10) || 0;
+
+  const readAlerts   = new Set(JSON.parse(localStorage.getItem('fp_read_alerts')   || '[]'));
+  const readEvidence = new Set(JSON.parse(localStorage.getItem('fp_read_evidence') || '[]'));
+
+  const unreadAlerts   = Math.max(0, totalAlerts   - readAlerts.size);
+  const unreadEvidence = Math.max(0, totalEvidence - readEvidence.size);
+
+  if (ab) {
+    ab.textContent = unreadAlerts > 0 ? String(unreadAlerts) : '';
+    ab.classList.toggle('visible', unreadAlerts > 0);
+  }
+  if (eb) {
+    eb.textContent = unreadEvidence > 0 ? String(unreadEvidence) : '';
+    eb.classList.toggle('visible', unreadEvidence > 0);
+  }
 }
 
 const Toast = {
