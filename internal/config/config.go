@@ -50,6 +50,8 @@ type CollectorConfig struct {
 	CollectMetadata bool `yaml:"collect_metadata"`
 	// Max log lines to capture per container
 	MaxLogLines int `yaml:"max_log_lines"`
+	// Automatically capture volatile data when any container terminates
+	CaptureOnExit bool `yaml:"capture_on_exit"`
 }
 
 type RepositoryConfig struct {
@@ -129,6 +131,7 @@ func defaultConfig() *Config {
 			CollectNetwork:  true,
 			CollectMetadata: true,
 			MaxLogLines:     1000,
+			CaptureOnExit:   true,
 		},
 		Repository: RepositoryConfig{
 			BasePath:  "/var/forensics/evidence",

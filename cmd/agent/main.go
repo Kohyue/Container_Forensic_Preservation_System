@@ -1,11 +1,14 @@
 package main
 
 import (
+	"bufio"
 	"context"
+	"encoding/json"
 	"flag"
 	"fmt"
 	"log/slog"
 	"os"
+	"os/exec"
 	"os/signal"
 	"syscall"
 	"time"
@@ -70,6 +73,9 @@ func main() {
 
 	// Scheduler goroutine: always running, no-op when schedule mode is disabled.
 	go runScheduler(ctx, captureQueue, cfg, logger, auditLog)
+
+	// Container exit watcher: captures volatile data when a container terminates.
+	go runContainerWatcher(ctx, cfg, logger, auditLog)
 
 	go func() {
 		if err := webSrv.Start(ctx); err != nil {
@@ -212,4 +218,88 @@ func runScheduler(ctx context.Context, queue <-chan captureRequest, cfg *config.
 			}
 		}
 	}
+}
+
+// runContainerWatcher monitors Docker events and triggers evidence capture
+// when a container terminates, preserving whatever volatile data is still
+// available (logs and metadata remain accessible after exit).
+func runContainerWatcher(ctx context.Context, cfg *config.Config, logger *slog.Logger, auditLog *audit.Logger) {
+	for {
+		if !cfg.Collector.CaptureOnExit {
+			// Feature disabled — sleep and re-check in case it's toggled on later.
+			select {
+			case <-ctx.Done():
+				return
+			case <-time.After(10 * time.Second):
+				continue
+			}
+		}
+
+		if err := watchDockerEvents(ctx, cfg, logger, auditLog); err != nil {
+			if ctx.Err() != nil {
+				return // normal shutdown
+			}
+			logger.Warn("container watcher restarting after error", "err", err)
+			select {
+			case <-ctx.Done():
+				return
+			case <-time.After(5 * time.Second):
+			}
+		}
+	}
+}
+
+func watchDockerEvents(ctx context.Context, cfg *config.Config, logger *slog.Logger, auditLog *audit.Logger) error {
+	cmd := exec.CommandContext(ctx, "docker", "events",
+		"--filter", "type=container",
+		"--filter", "event=die",
+		"--format", "{{json .}}")
+
+	stdout, err := cmd.StdoutPipe()
+	if err != nil {
+		return fmt.Errorf("stdout pipe: %w", err)
+	}
+	if err := cmd.Start(); err != nil {
+		return fmt.Errorf("start docker events: %w", err)
+	}
+
+	scanner := bufio.NewScanner(stdout)
+	for scanner.Scan() {
+		var ev struct {
+			ID    string `json:"id"`
+			Actor struct {
+				Attributes map[string]string `json:"Attributes"`
+			} `json:"Actor"`
+		}
+		if err := json.Unmarshal(scanner.Bytes(), &ev); err != nil {
+			continue
+		}
+
+		// Skip internal containers (the agent itself).
+		name := ev.Actor.Attributes["name"]
+		if name == "forensic-agent" || name == "falco" {
+			continue
+		}
+
+		containerID := ev.ID
+		logger.Info("container exit detected, capturing volatile data",
+			"container_id", containerID,
+			"container_name", name,
+		)
+
+		alert := &detector.FalcoAlert{
+			Rule:     "Container Termination",
+			Priority: "warning",
+			Output:   fmt.Sprintf("Container %s (%s) terminated — volatile data captured at exit", containerID[:12], name),
+			Time:     time.Now().UTC().Format(time.RFC3339Nano),
+			Fields: map[string]interface{}{
+				"container.id":   containerID,
+				"container.name": name,
+			},
+		}
+
+		go runCapture(ctx, cfg, logger, auditLog, alert)
+	}
+
+	return cmd.Wait()
 }

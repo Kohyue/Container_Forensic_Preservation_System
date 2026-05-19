@@ -14,6 +14,8 @@ collector:
   collect_network: true
   collect_metadata: true
   max_log_lines: 1000
+  # Capture volatile data (logs + metadata) when any container terminates
+  capture_on_exit: true
 
 repository:
   base_path: "/var/forensics/evidence"

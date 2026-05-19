@@ -82,6 +82,7 @@ const Settings = (() => {
       { key: 'collect_logs',     label: 'Collect Container Logs',     val: col.collect_logs     !== false },
       { key: 'collect_network',  label: 'Collect Network State',      val: col.collect_network  !== false },
       { key: 'collect_metadata', label: 'Collect Container Metadata', val: col.collect_metadata !== false },
+      { key: 'capture_on_exit',  label: 'Capture on Container Exit',  val: col.capture_on_exit  !== false },
     ];
 
     el.innerHTML = `
@@ -120,6 +121,7 @@ const Settings = (() => {
       collect_logs:     document.getElementById('col-collect_logs')?.checked,
       collect_network:  document.getElementById('col-collect_network')?.checked,
       collect_metadata: document.getElementById('col-collect_metadata')?.checked,
+      capture_on_exit:  document.getElementById('col-capture_on_exit')?.checked,
       max_log_lines:    parseInt(document.getElementById('col-max-log-lines')?.value, 10) || undefined,
       timeout_seconds:  parseInt(document.getElementById('col-timeout')?.value, 10)       || undefined,
     };

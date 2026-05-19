@@ -285,6 +285,7 @@ type collectorUpdateRequest struct {
 	CollectLogs     *bool `json:"collect_logs"`
 	CollectNetwork  *bool `json:"collect_network"`
 	CollectMetadata *bool `json:"collect_metadata"`
+	CaptureOnExit   *bool `json:"capture_on_exit"`
 	MaxLogLines     *int  `json:"max_log_lines"`
 	TimeoutSeconds  *int  `json:"timeout_seconds"`
 }
@@ -312,6 +313,9 @@ func (s *Server) handleUpdateCollector(w http.ResponseWriter, r *http.Request) {
 	}
 	if req.CollectMetadata != nil {
 		s.cfg.Collector.CollectMetadata = *req.CollectMetadata
+	}
+	if req.CaptureOnExit != nil {
+		s.cfg.Collector.CaptureOnExit = *req.CaptureOnExit
 	}
 	if req.MaxLogLines != nil && *req.MaxLogLines > 0 {
 		s.cfg.Collector.MaxLogLines = *req.MaxLogLines
