@@ -71,7 +71,7 @@ func (s *Server) handleStats(w http.ResponseWriter, r *http.Request) {
 	allAlerts := s.readAlertEntries()
 	byPriority := make(map[string]int)
 	for _, a := range allAlerts {
-		byPriority[a.Priority]++
+		byPriority[strings.ToLower(a.Priority)]++
 	}
 
 	recent := allAlerts

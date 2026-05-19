@@ -10,6 +10,7 @@ import (
 	"os"
 	"os/exec"
 	"os/signal"
+	"strings"
 	"syscall"
 	"time"
 
@@ -151,7 +152,7 @@ func runCapture(ctx context.Context, cfg *config.Config, logger *slog.Logger, au
 func buildHandler(cfg *config.Config, logger *slog.Logger, auditLog *audit.Logger, queue chan<- captureRequest) detector.AlertHandler {
 	return func(ctx context.Context, alert *detector.FalcoAlert) {
 		containerID := alert.ContainerID()
-		auditLog.Log(audit.AlertReceived(containerID, alert.Rule, alert.Priority))
+		auditLog.Log(audit.AlertReceived(containerID, alert.Rule, strings.ToLower(alert.Priority)))
 
 		logger.Info("preservation triggered",
 			"container_id", containerID,
