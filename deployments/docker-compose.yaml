@@ -1,9 +1,11 @@
-# Local test environment: Falco + forensic-agent + a vulnerable target container.
+# Local test environment: forensic-agent + a vulnerable target container.
+# Falco runs on the HOST (not in Docker) — see README or run: make falco-install && make falco
+#
 # Usage:
-#   docker compose up -d
-#   docker compose exec target bash   # trigger alerts
-#   ls /var/forensics/evidence        # inspect captured evidence
-version: "3.9"
+#   make up              — start agent + target
+#   make falco-install   — install Falco on the host (first time only)
+#   make falco           — start Falco on the host (in a separate terminal)
+#   docker exec -it target sh   — open shell in target to trigger alerts
 
 services:
   # The forensic preservation agent
@@ -24,28 +26,6 @@ services:
       - "8080:8080"
     environment:
       - NODE_NAME=local
-
-  # Falco runtime security monitor
-  falco:
-    image: falcosecurity/falco-no-driver:latest
-    container_name: falco
-    restart: unless-stopped
-    privileged: true
-    pid: host
-    volumes:
-      - /var/run/docker.sock:/var/run/docker.sock
-      - /dev:/host/dev
-      - /proc:/host/proc:ro
-      - /boot:/host/boot:ro
-      - /lib/modules:/host/lib/modules:ro
-      - /usr:/host/usr:ro
-      - /etc:/host/etc:ro
-      - /sys/kernel/btf:/sys/kernel/btf:ro
-      - /sys/kernel/debug:/sys/kernel/debug:ro
-      - ../configs/falco-rules.yaml:/etc/falco/forensic-rules.yaml:ro
-      - ./falco.yaml:/etc/falco/falco.yaml:ro
-    depends_on:
-      - forensic-agent
 
   # A minimal Alpine container used to simulate suspicious activity during testing.
   target:
