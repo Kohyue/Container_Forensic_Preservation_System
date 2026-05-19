@@ -457,7 +457,12 @@ a:hover { text-decoration: underline; }
 /* ── Button variants ────────────────────────────────────────────────────── */
 .btn-success { background: var(--green-dim); color: var(--green); border-color: var(--green); }
 .btn-success:hover { filter: brightness(1.2); }
+.btn-danger  { background: rgba(248,81,73,.15); color: var(--red); border-color: var(--red); }
+.btn-danger:hover  { background: rgba(248,81,73,.28); }
 .btn-sm { padding: 3px 10px !important; font-size: 11px !important; }
+
+/* ── Danger zone card ───────────────────────────────────────────────────── */
+.card--danger { border-color: rgba(248,81,73,.35); }
 
 /* ── Settings — editable forms ──────────────────────────────────────────── */
 .setting-form { display: flex; flex-direction: column; gap: 14px; }

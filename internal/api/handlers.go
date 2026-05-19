@@ -390,6 +390,57 @@ func (s *Server) handleGetRules(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, rulesResponse{Path: s.cfg.Web.RulesPath, Rules: rules})
 }
 
+// ── /api/v1/reset (POST) ─────────────────────────────────────────────────────
+
+func (s *Server) handleReset(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		writeError(w, http.StatusMethodNotAllowed, "POST required")
+		return
+	}
+
+	var deletedPackages, deletedFiles int
+
+	// Delete all evidence package directories.
+	entries, err := os.ReadDir(s.cfg.Repository.BasePath)
+	if err != nil && !os.IsNotExist(err) {
+		writeError(w, http.StatusInternalServerError, "failed to read evidence dir: "+err.Error())
+		return
+	}
+	for _, entry := range entries {
+		if !entry.IsDir() {
+			continue
+		}
+		dir := filepath.Join(s.cfg.Repository.BasePath, entry.Name())
+		// Count files inside before removing.
+		if fis, err := os.ReadDir(dir); err == nil {
+			deletedFiles += len(fis)
+		}
+		if err := os.RemoveAll(dir); err != nil {
+			s.logger.Warn("failed to remove evidence package", "dir", dir, "err", err)
+		} else {
+			deletedPackages++
+		}
+	}
+
+	// Truncate the audit log (preserves the file, clears contents).
+	if err := os.WriteFile(s.cfg.Audit.LogPath, []byte{}, 0o640); err != nil {
+		s.logger.Warn("failed to clear audit log", "err", err)
+	}
+
+	// Also clear client-side localStorage read-state by returning a reset token
+	// (the JS will clear it after a successful response).
+	s.logger.Info("system reset performed",
+		"deleted_packages", deletedPackages,
+		"deleted_files", deletedFiles,
+	)
+
+	writeJSON(w, http.StatusOK, map[string]interface{}{
+		"status":           "ok",
+		"deleted_packages": deletedPackages,
+		"deleted_files":    deletedFiles,
+	})
+}
+
 // ── internal helpers ──────────────────────────────────────────────────────────
 
 // readAlertEntries parses the audit log and returns all ALERT_RECEIVED entries.

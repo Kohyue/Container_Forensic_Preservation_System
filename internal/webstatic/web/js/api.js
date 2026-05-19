@@ -35,5 +35,7 @@ const API = (() => {
     // Runtime config updates
     updateCollector: (data) => post('/config/collector', data),
     updateSchedule:  (data) => post('/config/schedule',  data),
+    // Destructive
+    reset: () => post('/reset', {}),
   };
 })();

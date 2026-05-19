@@ -39,6 +39,9 @@ func NewServer(cfg *config.Config, logger *slog.Logger, startedAt time.Time) *Se
 	mux.HandleFunc("/api/v1/config/collector", s.handleUpdateCollector)
 	mux.HandleFunc("/api/v1/config/schedule",  s.handleUpdateSchedule)
 
+	// REST API — destructive operations
+	mux.HandleFunc("/api/v1/reset", s.handleReset)
+
 	// Static web files — serve from the embedded FS
 	webFS, err := fs.Sub(webstatic.FS, "web")
 	if err != nil {

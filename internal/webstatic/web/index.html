@@ -263,6 +263,39 @@
           <div class="card-header"><span class="card-title">Agent Information</span></div>
           <div class="card-body" id="settings-info">Loading…</div>
         </div>
+
+        <!-- Danger Zone -->
+        <div class="card mt-4 card--danger">
+          <div class="card-header">
+            <span class="card-title" style="color:var(--red)">⚠ Danger Zone</span>
+          </div>
+          <div class="card-body">
+            <p style="margin:0 0 12px;font-size:13px;color:var(--text-2)">
+              Permanently delete all collected alerts and evidence packages from this system.
+              This action <strong>cannot be undone</strong>.
+            </p>
+            <button class="btn btn-danger" onclick="Settings.showResetConfirm()">
+              Clear All Alerts &amp; Evidence
+            </button>
+
+            <!-- Confirmation box — hidden by default -->
+            <div id="reset-confirm-box" style="display:none;margin-top:16px;padding:16px;
+                 background:var(--bg-0);border:1px solid var(--red);border-radius:var(--radius)">
+              <p style="margin:0 0 10px;font-size:13px;font-weight:600;color:var(--red)">
+                ⚠ Are you absolutely sure?
+              </p>
+              <ul style="margin:0 0 14px;padding-left:18px;font-size:12px;color:var(--text-2);line-height:1.7">
+                <li>All evidence packages and their forensic artifacts will be <strong>permanently deleted</strong>.</li>
+                <li>All alert history will be <strong>erased</strong> from the audit log.</li>
+                <li>This cannot be recovered. There is no undo.</li>
+              </ul>
+              <div style="display:flex;gap:8px">
+                <button class="btn btn-danger" onclick="Settings.confirmReset()">Yes, delete everything</button>
+                <button class="btn btn-secondary" onclick="Settings.hideResetConfirm()">Cancel</button>
+              </div>
+            </div>
+          </div>
+        </div>
       </section>
 
     </main>

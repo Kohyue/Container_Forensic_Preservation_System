@@ -227,5 +227,31 @@ const Settings = (() => {
     return `${s}s`;
   }
 
-  return { load, saveCollection, saveSchedule, onModeChange };
+  // ── Danger Zone ───────────────────────────────────────────────────────────
+  function showResetConfirm() {
+    document.getElementById('reset-confirm-box').style.display = '';
+  }
+
+  function hideResetConfirm() {
+    document.getElementById('reset-confirm-box').style.display = 'none';
+  }
+
+  async function confirmReset() {
+    try {
+      const result = await API.reset();
+      // Clear client-side read state too
+      localStorage.removeItem('fp_read_alerts');
+      localStorage.removeItem('fp_read_evidence');
+      hideResetConfirm();
+      Toast.success(
+        `System reset complete — ${result.deleted_packages} package(s) and all alerts deleted.`
+      );
+      // Reload settings to reflect cleared state
+      setTimeout(() => load(), 800);
+    } catch (e) {
+      Toast.error('Reset failed: ' + e.message);
+    }
+  }
+
+  return { load, saveCollection, saveSchedule, onModeChange, showResetConfirm, hideResetConfirm, confirmReset };
 })();
