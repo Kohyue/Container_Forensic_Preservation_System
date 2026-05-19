@@ -298,6 +298,8 @@ func watchDockerEvents(ctx context.Context, cfg *config.Config, logger *slog.Log
 			},
 		}
 
+		// Log to audit so it appears on the Alerts page.
+		auditLog.Log(audit.AlertReceived(containerID, alert.Rule, alert.Priority))
 		go runCapture(ctx, cfg, logger, auditLog, alert)
 	}
 
