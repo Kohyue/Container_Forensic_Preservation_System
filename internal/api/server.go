@@ -34,6 +34,7 @@ func NewServer(cfg *config.Config, logger *slog.Logger, startedAt time.Time) *Se
 	mux.HandleFunc("/api/v1/evidence/", s.handleEvidence)
 	mux.HandleFunc("/api/v1/config",  s.handleGetConfig)
 	mux.HandleFunc("/api/v1/rules",   s.handleGetRules)
+	mux.HandleFunc("/api/v1/metrics", s.handleMetrics)
 
 	// REST API — runtime config updates (POST)
 	mux.HandleFunc("/api/v1/config/collector", s.handleUpdateCollector)

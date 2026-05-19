@@ -41,6 +41,13 @@ const App = (() => {
     // Close any open detail panels
     document.querySelectorAll('.detail-panel').forEach(p => p.classList.add('hidden'));
 
+    // Start/stop real-time metrics polling
+    if (section === 'dashboard') {
+      Metrics.start();
+    } else {
+      Metrics.stop();
+    }
+
     // Load section data
     LOADERS[section]?.();
 

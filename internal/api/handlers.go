@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"runtime"
 	"sort"
 	"strconv"
 	"strings"
@@ -388,6 +389,37 @@ func (s *Server) handleGetRules(w http.ResponseWriter, r *http.Request) {
 	}
 	rules := parseFalcoRulesYAML(string(data))
 	writeJSON(w, http.StatusOK, rulesResponse{Path: s.cfg.Web.RulesPath, Rules: rules})
+}
+
+// ── /api/v1/metrics ──────────────────────────────────────────────────────────
+
+type metricsResponse struct {
+	AllocMB      float64 `json:"alloc_mb"`
+	SysMB        float64 `json:"sys_mb"`
+	HeapInUseMB  float64 `json:"heap_inuse_mb"`
+	Goroutines   int     `json:"goroutines"`
+	GCRuns       uint32  `json:"gc_runs"`
+	BinarySizeKB int64   `json:"binary_size_kb"`
+}
+
+func (s *Server) handleMetrics(w http.ResponseWriter, r *http.Request) {
+	var ms runtime.MemStats
+	runtime.ReadMemStats(&ms)
+
+	// Try to get binary size from /proc/self/exe (Linux only).
+	var binaryKB int64
+	if info, err := os.Stat("/proc/self/exe"); err == nil {
+		binaryKB = info.Size() / 1024
+	}
+
+	writeJSON(w, http.StatusOK, metricsResponse{
+		AllocMB:      float64(ms.Alloc) / 1024 / 1024,
+		SysMB:        float64(ms.Sys) / 1024 / 1024,
+		HeapInUseMB:  float64(ms.HeapInuse) / 1024 / 1024,
+		Goroutines:   runtime.NumGoroutine(),
+		GCRuns:       ms.NumGC,
+		BinarySizeKB: binaryKB,
+	})
 }
 
 // ── /api/v1/reset (POST) ─────────────────────────────────────────────────────

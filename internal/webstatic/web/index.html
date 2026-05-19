@@ -69,76 +69,120 @@
 
       <!-- ── Dashboard ──────────────────────────────────────────────── -->
       <section id="section-dashboard" class="section">
-        <div class="stat-grid">
-          <div class="stat-card stat-card--status">
-            <div class="stat-card-icon">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
-            </div>
-            <div class="stat-card-body">
-              <div class="stat-value" id="stat-status">—</div>
-              <div class="stat-label">Monitoring Status</div>
-            </div>
-            <div class="stat-card-sub" id="stat-node">—</div>
-          </div>
-          <div class="stat-card">
-            <div class="stat-card-icon stat-card-icon--alert">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
-            </div>
-            <div class="stat-card-body">
-              <div class="stat-value" id="stat-alerts">—</div>
-              <div class="stat-label">Total Alerts</div>
-            </div>
-          </div>
-          <div class="stat-card">
-            <div class="stat-card-icon stat-card-icon--evidence">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14,2 14,8 20,8"/></svg>
-            </div>
-            <div class="stat-card-body">
-              <div class="stat-value" id="stat-evidence">—</div>
-              <div class="stat-label">Evidence Packages</div>
-            </div>
-          </div>
-          <div class="stat-card">
-            <div class="stat-card-icon stat-card-icon--uptime">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12,6 12,12 16,14"/></svg>
-            </div>
-            <div class="stat-card-body">
-              <div class="stat-value" id="stat-uptime">—</div>
-              <div class="stat-label">Uptime</div>
-            </div>
-          </div>
-        </div>
+        <div class="dash-outer-layout">
 
-        <div class="dash-grid">
-          <div class="card">
-            <div class="card-header">
-              <span class="card-title">Recent Alerts</span>
-              <a href="#alerts" class="card-link" onclick="App.navigate('alerts')">View all →</a>
+          <!-- Left: main dashboard content -->
+          <div class="dash-main">
+            <div class="stat-grid">
+              <div class="stat-card stat-card--status">
+                <div class="stat-card-icon">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+                </div>
+                <div class="stat-card-body">
+                  <div class="stat-value" id="stat-status">—</div>
+                  <div class="stat-label">Monitoring Status</div>
+                </div>
+                <div class="stat-card-sub" id="stat-node">—</div>
+              </div>
+              <div class="stat-card">
+                <div class="stat-card-icon stat-card-icon--alert">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                </div>
+                <div class="stat-card-body">
+                  <div class="stat-value" id="stat-alerts">—</div>
+                  <div class="stat-label">Total Alerts</div>
+                </div>
+              </div>
+              <div class="stat-card">
+                <div class="stat-card-icon stat-card-icon--evidence">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14,2 14,8 20,8"/></svg>
+                </div>
+                <div class="stat-card-body">
+                  <div class="stat-value" id="stat-evidence">—</div>
+                  <div class="stat-label">Evidence Packages</div>
+                </div>
+              </div>
+              <div class="stat-card">
+                <div class="stat-card-icon stat-card-icon--uptime">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12,6 12,12 16,14"/></svg>
+                </div>
+                <div class="stat-card-body">
+                  <div class="stat-value" id="stat-uptime">—</div>
+                  <div class="stat-label">Uptime</div>
+                </div>
+              </div>
             </div>
-            <div class="card-body" id="dash-recent-alerts">
-              <div class="empty-state">Loading…</div>
-            </div>
-          </div>
 
-          <div class="card">
-            <div class="card-header">
-              <span class="card-title">Alert Distribution</span>
-            </div>
-            <div class="card-body" id="dash-priority-chart">
-              <div class="empty-state">Loading…</div>
-            </div>
-          </div>
-        </div>
+            <div class="dash-grid">
+              <div class="card">
+                <div class="card-header">
+                  <span class="card-title">Recent Alerts</span>
+                  <a href="#alerts" class="card-link" onclick="App.navigate('alerts')">View all →</a>
+                </div>
+                <div class="card-body" id="dash-recent-alerts">
+                  <div class="empty-state">Loading…</div>
+                </div>
+              </div>
 
-        <div class="card mt-4">
-          <div class="card-header">
-            <span class="card-title">Recent Evidence Packages</span>
-            <a href="#evidence" class="card-link" onclick="App.navigate('evidence')">View all →</a>
-          </div>
-          <div class="card-body" id="dash-recent-evidence">
-            <div class="empty-state">Loading…</div>
-          </div>
-        </div>
+              <div class="card">
+                <div class="card-header">
+                  <span class="card-title">Alert Distribution</span>
+                </div>
+                <div class="card-body" id="dash-priority-chart">
+                  <div class="empty-state">Loading…</div>
+                </div>
+              </div>
+            </div>
+
+            <div class="card mt-4">
+              <div class="card-header">
+                <span class="card-title">Recent Evidence Packages</span>
+                <a href="#evidence" class="card-link" onclick="App.navigate('evidence')">View all →</a>
+              </div>
+              <div class="card-body" id="dash-recent-evidence">
+                <div class="empty-state">Loading…</div>
+              </div>
+            </div>
+          </div><!-- /dash-main -->
+
+          <!-- Right: real-time agent metrics panel -->
+          <aside class="metrics-panel">
+            <div class="metrics-panel-header">
+              <span class="metrics-panel-title">Agent Metrics</span>
+              <span class="metrics-live-dot" id="metrics-live-dot" title="Live — updates every 3 s"></span>
+            </div>
+
+            <div class="metrics-section-label">Memory Usage</div>
+            <div class="metrics-mem-bar-wrap">
+              <div class="metrics-mem-bar" id="metrics-mem-bar"></div>
+            </div>
+            <div class="metrics-mem-values">
+              <span id="metrics-alloc">—</span>
+              <span class="metrics-mem-sep">of</span>
+              <span id="metrics-sys">—</span>
+            </div>
+
+            <div class="metric-row">
+              <span class="metric-label">Heap In Use</span>
+              <span class="metric-value" id="metrics-heap-inuse">—</span>
+            </div>
+            <div class="metric-row">
+              <span class="metric-label">Goroutines</span>
+              <span class="metric-value" id="metrics-goroutines">—</span>
+            </div>
+            <div class="metric-row">
+              <span class="metric-label">GC Runs</span>
+              <span class="metric-value" id="metrics-gc">—</span>
+            </div>
+            <div class="metric-row">
+              <span class="metric-label">Binary Size</span>
+              <span class="metric-value" id="metrics-binary">—</span>
+            </div>
+
+            <div class="metrics-updated" id="metrics-updated"></div>
+          </aside><!-- /metrics-panel -->
+
+        </div><!-- /dash-outer-layout -->
       </section>
 
       <!-- ── Alerts ─────────────────────────────────────────────────── -->
@@ -310,6 +354,7 @@
   <script src="/js/alerts.js"></script>
   <script src="/js/evidence.js"></script>
   <script src="/js/settings.js"></script>
+  <script src="/js/metrics.js"></script>
   <script src="/js/app.js"></script>
 </body>
 </html>

@@ -23,6 +23,7 @@ const API = (() => {
 
   return {
     status:       () => get('/status'),
+    metrics:      () => get('/metrics'),
     stats:        () => get('/stats'),
     alerts:       (params = {}) => get('/alerts?' + new URLSearchParams(params)),
     listEvidence: (params = {}) => get('/evidence?' + new URLSearchParams(params)),
