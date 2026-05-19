@@ -47,7 +47,8 @@ falco-install:
 https://download.falco.org/packages/deb stable main" | \
 		sudo tee /etc/apt/sources.list.d/falcosecurity.list
 	sudo apt-get update -y
-	FALCO_DRIVER_CHOICE=modern_ebpf sudo apt-get install -y falco
+	FALCO_DRIVER_CHOICE=modern_ebpf sudo apt-get install -y falco falcoctl
+	sudo falcoctl artifact install container
 	@echo ""
 	@echo "Falco installed. Run 'make falco' to start monitoring."
 
