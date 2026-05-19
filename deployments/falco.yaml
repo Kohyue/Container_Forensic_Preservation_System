@@ -4,6 +4,15 @@
 engine:
   kind: modern_ebpf
 
+plugins:
+  - name: container
+    library_path: /usr/share/falco/plugins/libcontainer.so
+    init_config:
+      label_max_len: 100
+
+load_plugins:
+  - container
+
 rules_files:
   - /etc/falco/falco_rules.yaml
   - /etc/falco/forensic-rules.yaml
