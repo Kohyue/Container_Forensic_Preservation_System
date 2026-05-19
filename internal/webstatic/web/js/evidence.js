@@ -136,7 +136,7 @@ const Evidence = (() => {
           </div>
           <div class="ev-footer">
             <span class="ev-files">${p.artifact_count ?? 0} artifact${p.artifact_count !== 1 ? 's' : ''}</span>
-            ${dur ? `<span class="duration-badge">${esc(dur)}</span>` : ''}
+            ${dur ? `<span class="duration-badge">Captured in: ${esc(dur)}</span>` : ''}
           </div>
         </div>`;
     }).join('');
@@ -236,7 +236,7 @@ const Evidence = (() => {
         <div class="detail-field-value">${badge(pkg.trigger_priority)}</div>
       </div>
       ${dur ? `<div class="detail-field">
-        <div class="detail-field-label">Capture Duration</div>
+        <div class="detail-field-label">Captured In</div>
         <div class="detail-field-value" style="color:var(--blue);font-weight:600">${esc(dur)}</div>
       </div>` : ''}
       ${m.manifest_sha256 ? `<div class="detail-field">
