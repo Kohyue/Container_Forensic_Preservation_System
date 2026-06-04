@@ -26,12 +26,15 @@ const Dashboard = (() => {
 
   async function load() {
     try {
-      const [status, stats] = await Promise.all([API.status(), API.stats()]);
+      const [status, stats, containersData] = await Promise.all([
+        API.status(), API.stats(), API.containers().catch(() => ({ containers: [] })),
+      ]);
       renderStatus(status);
       renderStats(stats);
       renderRecentAlerts(stats.recent_alerts || []);
       renderPriorityChart(stats.alerts_by_priority || {});
       renderRecentEvidence(stats.recent_evidence || []);
+      renderContainers(containersData.containers || []);
     } catch (e) {
       Toast.error('Failed to load dashboard: ' + e.message);
     }
@@ -101,6 +104,40 @@ const Dashboard = (() => {
         <span class="prio-count">${v}</span>
       </div>`).join('');
     el.innerHTML = `<div class="prio-chart">${rows}</div>`;
+  }
+
+  function renderContainers(containers) {
+    const el    = document.getElementById('dash-containers');
+    const count = document.getElementById('monitored-count');
+    if (!el) return;
+
+    const n = containers.length;
+    if (count) count.textContent = n === 0 ? 'none running' : `${n} running`;
+
+    if (!n) {
+      el.innerHTML = '<div class="empty-state">No containers currently running.</div>';
+      return;
+    }
+
+    el.innerHTML = `
+      <div class="container-list">
+        ${containers.map(c => {
+          const isRunning = (c.state || '').toLowerCase() === 'running';
+          const alertBadge = c.alert_count > 0
+            ? `<span class="ctag ctag--alert">${c.alert_count} alert${c.alert_count !== 1 ? 's' : ''}</span>`
+            : `<span class="ctag ctag--ok">0 alerts</span>`;
+          return `
+            <div class="container-row">
+              <span class="container-dot ${isRunning ? 'container-dot--up' : 'container-dot--down'}"
+                    title="${isRunning ? 'Running' : c.state}"></span>
+              <span class="container-name">${esc(c.name)}</span>
+              <span class="container-image">${esc(c.image)}</span>
+              <span class="container-uptime">${esc(c.running_for || c.status || '—')}</span>
+              <span class="container-id mono">${esc(c.id)}</span>
+              ${alertBadge}
+            </div>`;
+        }).join('')}
+      </div>`;
   }
 
   function renderRecentEvidence(pkgs) {

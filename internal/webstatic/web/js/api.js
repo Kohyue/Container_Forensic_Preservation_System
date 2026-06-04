@@ -31,6 +31,7 @@ const API = (() => {
     getFile:      (id, filename) =>
       fetch(`${BASE}/evidence/${encodeURIComponent(id)}/file/${encodeURIComponent(filename)}`)
         .then(r => { if (!r.ok) throw new Error('File not found'); return r.text(); }),
+    containers: () => get('/containers'),
     config:  () => get('/config'),
     rules:   () => get('/rules'),
     // Runtime config updates

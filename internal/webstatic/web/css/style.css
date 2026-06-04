@@ -522,6 +522,43 @@ a:hover { text-decoration: underline; }
 .mode-option-title { font-size: 13px; font-weight: 600; color: var(--text-1); }
 .mode-option-desc  { font-size: 12px; color: var(--text-2); }
 
+/* ── Monitored containers list ───────────────────────────────────────────── */
+.card-sub {
+  font-size: 11px;
+  color: var(--text-3);
+}
+
+.container-list { display: flex; flex-direction: column; gap: 0; }
+
+.container-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 0;
+  border-bottom: 1px solid var(--border-sub);
+  font-size: 12px;
+  flex-wrap: wrap;
+}
+.container-row:last-child { border-bottom: none; }
+
+.container-dot {
+  width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0;
+}
+.container-dot--up   { background: var(--green); box-shadow: 0 0 4px var(--green); }
+.container-dot--down { background: var(--text-3); }
+
+.container-name  { font-weight: 600; color: var(--text-1); min-width: 80px; }
+.container-image { color: var(--text-2); flex: 1; }
+.container-uptime{ color: var(--text-3); font-size: 11px; }
+.container-id    { color: var(--text-3); font-size: 11px; }
+
+.ctag {
+  font-size: 10px; font-weight: 600; padding: 2px 7px;
+  border-radius: 10px; letter-spacing: .3px; white-space: nowrap;
+}
+.ctag--alert { background: var(--red-dim);    color: var(--red); }
+.ctag--ok    { background: var(--bg-2);       color: var(--text-3); }
+
 /* ── Metrics panel ───────────────────────────────────────────────────────── */
 .dash-outer-layout {
   display: flex;

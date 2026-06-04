@@ -2,9 +2,11 @@ package api
 
 import (
 	"bufio"
+	"bytes"
 	"encoding/json"
 	"net/http"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"runtime"
 	"sort"
@@ -389,6 +391,91 @@ func (s *Server) handleGetRules(w http.ResponseWriter, r *http.Request) {
 	}
 	rules := parseFalcoRulesYAML(string(data))
 	writeJSON(w, http.StatusOK, rulesResponse{Path: s.cfg.Web.RulesPath, Rules: rules})
+}
+
+// ── /api/v1/containers ───────────────────────────────────────────────────────
+
+type monitoredContainer struct {
+	ID         string `json:"id"`
+	Name       string `json:"name"`
+	Image      string `json:"image"`
+	State      string `json:"state"`
+	Status     string `json:"status"`
+	RunningFor string `json:"running_for"`
+	AlertCount int    `json:"alert_count"`
+}
+
+type containersResponse struct {
+	Containers []monitoredContainer `json:"containers"`
+	Total      int                  `json:"total"`
+}
+
+func (s *Server) handleContainers(w http.ResponseWriter, r *http.Request) {
+	out, err := exec.Command("docker", "ps", "--format", "{{json .}}").Output()
+	if err != nil {
+		// Docker not accessible — return empty list gracefully.
+		writeJSON(w, http.StatusOK, containersResponse{Containers: []monitoredContainer{}, Total: 0})
+		return
+	}
+
+	alertCounts := s.alertCountByContainer()
+
+	var containers []monitoredContainer
+	scanner := bufio.NewScanner(bytes.NewReader(out))
+	for scanner.Scan() {
+		line := strings.TrimSpace(scanner.Text())
+		if line == "" {
+			continue
+		}
+		var raw struct {
+			ID         string `json:"ID"`
+			Names      string `json:"Names"`
+			Image      string `json:"Image"`
+			State      string `json:"State"`
+			Status     string `json:"Status"`
+			RunningFor string `json:"RunningFor"`
+		}
+		if err := json.Unmarshal([]byte(line), &raw); err != nil {
+			continue
+		}
+		name := strings.TrimPrefix(raw.Names, "/")
+		// Exclude the agent and Falco from the monitored list.
+		if name == "forensic-agent" || name == "falco" {
+			continue
+		}
+		shortID := raw.ID
+		if len(shortID) > 12 {
+			shortID = shortID[:12]
+		}
+		containers = append(containers, monitoredContainer{
+			ID:         shortID,
+			Name:       name,
+			Image:      raw.Image,
+			State:      raw.State,
+			Status:     raw.Status,
+			RunningFor: raw.RunningFor,
+			AlertCount: alertCounts[shortID],
+		})
+	}
+	if containers == nil {
+		containers = []monitoredContainer{}
+	}
+	writeJSON(w, http.StatusOK, containersResponse{Containers: containers, Total: len(containers)})
+}
+
+// alertCountByContainer returns a map of short container ID → alert count.
+func (s *Server) alertCountByContainer() map[string]int {
+	counts := make(map[string]int)
+	for _, e := range s.readAlertEntries() {
+		id := e.ContainerID
+		if len(id) > 12 {
+			id = id[:12]
+		}
+		if id != "" {
+			counts[id]++
+		}
+	}
+	return counts
 }
 
 // ── /api/v1/metrics ──────────────────────────────────────────────────────────
