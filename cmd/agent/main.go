@@ -11,6 +11,7 @@ import (
 	"os/exec"
 	"os/signal"
 	"strings"
+	"sync"
 	"syscall"
 	"time"
 
@@ -27,6 +28,38 @@ import (
 type captureRequest struct {
 	alert      *detector.FalcoAlert
 	receivedAt time.Time
+}
+
+// alertDedup suppresses duplicate alerts for the same rule+container
+// within a short time window so repeated syscall bursts (e.g. nc retries)
+// produce only one alert and one evidence capture.
+type alertDedup struct {
+	mu      sync.Mutex
+	lastSeen map[string]time.Time
+}
+
+func newAlertDedup() *alertDedup {
+	return &alertDedup{lastSeen: make(map[string]time.Time)}
+}
+
+// allow returns true if the alert should be processed, false if it is a
+// duplicate within the dedup window. It also evicts stale entries.
+func (d *alertDedup) allow(containerID, rule string, window time.Duration) bool {
+	key := containerID + "|" + rule
+	now := time.Now()
+	d.mu.Lock()
+	defer d.mu.Unlock()
+	if last, ok := d.lastSeen[key]; ok && now.Sub(last) < window {
+		return false
+	}
+	d.lastSeen[key] = now
+	// Evict entries older than 10× the window to keep the map small.
+	for k, t := range d.lastSeen {
+		if now.Sub(t) > window*10 {
+			delete(d.lastSeen, k)
+		}
+	}
+	return true
 }
 
 func main() {
@@ -65,7 +98,8 @@ func main() {
 	// Buffered queue absorbs alert bursts in scheduled mode.
 	captureQueue := make(chan captureRequest, 500)
 
-	handler    := buildHandler(cfg, logger, auditLog, captureQueue)
+	dedup      := newAlertDedup()
+	handler    := buildHandler(cfg, logger, auditLog, captureQueue, dedup)
 	webhookSrv := detector.NewServer(cfg.Detector.ListenAddr, cfg.Detector.MinPriority, handler, logger)
 	webSrv     := api.NewServer(cfg, logger, startedAt)
 
@@ -153,9 +187,22 @@ func runCapture(ctx context.Context, cfg *config.Config, logger *slog.Logger, au
 
 // buildHandler returns the AlertHandler that either queues the alert for
 // scheduled processing or runs the capture pipeline immediately.
-func buildHandler(cfg *config.Config, logger *slog.Logger, auditLog *audit.Logger, queue chan<- captureRequest) detector.AlertHandler {
+func buildHandler(cfg *config.Config, logger *slog.Logger, auditLog *audit.Logger, queue chan<- captureRequest, dedup *alertDedup) detector.AlertHandler {
+	const dedupWindow = 5 * time.Second
 	return func(ctx context.Context, alert *detector.FalcoAlert) {
 		containerID := alert.ContainerID()
+
+		// Suppress duplicate alerts for the same rule+container within the
+		// dedup window. This prevents syscall bursts (e.g. nc retry loops)
+		// from producing dozens of identical alerts and evidence packages.
+		if !dedup.allow(containerID, alert.Rule, dedupWindow) {
+			logger.Debug("duplicate alert suppressed",
+				"container_id", containerID,
+				"rule", alert.Rule,
+			)
+			return
+		}
+
 		auditLog.Log(audit.AlertReceived(containerID, alert.Rule, strings.ToLower(alert.Priority)))
 
 		logger.Info("preservation triggered",
