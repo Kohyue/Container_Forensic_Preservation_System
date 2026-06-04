@@ -149,8 +149,15 @@ function updateNavBadges() {
   const readAlerts   = new Set(JSON.parse(localStorage.getItem('fp_read_alerts')   || '[]'));
   const readEvidence = new Set(JSON.parse(localStorage.getItem('fp_read_evidence') || '[]'));
 
-  const unreadAlerts   = Math.max(0, totalAlerts   - readAlerts.size);
-  const unreadEvidence = Math.max(0, totalEvidence - readEvidence.size);
+  // ackAlerts/ackEvidence store the total count at the time the user last
+  // clicked "Mark all read". Using Math.max of readSet.size and ackTotal
+  // means the badge stays clear even when navigating back to the dashboard
+  // and renderStats() fetches a fresh (but unchanged) total from the API.
+  const ackAlerts   = parseInt(localStorage.getItem('fp_ack_alerts')   || '0', 10);
+  const ackEvidence = parseInt(localStorage.getItem('fp_ack_evidence') || '0', 10);
+
+  const unreadAlerts   = Math.max(0, totalAlerts   - Math.max(readAlerts.size,   ackAlerts));
+  const unreadEvidence = Math.max(0, totalEvidence - Math.max(readEvidence.size, ackEvidence));
 
   if (ab) {
     ab.textContent = unreadAlerts > 0 ? String(unreadAlerts) : '';

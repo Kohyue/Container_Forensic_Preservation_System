@@ -239,9 +239,11 @@ const Settings = (() => {
   async function confirmReset() {
     try {
       const result = await API.reset();
-      // Clear client-side read state too
+      // Clear client-side read state and acknowledged totals
       localStorage.removeItem('fp_read_alerts');
       localStorage.removeItem('fp_read_evidence');
+      localStorage.removeItem('fp_ack_alerts');
+      localStorage.removeItem('fp_ack_evidence');
       hideResetConfirm();
       Toast.success(
         `System reset complete — ${result.deleted_packages} package(s) and all alerts deleted.`

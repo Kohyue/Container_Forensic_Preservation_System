@@ -46,7 +46,8 @@ const Evidence = (() => {
     saveReadSet(s);
     renderGrid(allPackages);
     Toast.success('All visible evidence packages marked as read');
-    // Sync dataset.total so the badge resolves to zero immediately.
+    // Save acknowledged total so the badge stays clear on dashboard return.
+    localStorage.setItem('fp_ack_evidence', String(totalPackages));
     const eb = document.getElementById('nav-evidence-count');
     if (eb) eb.dataset.total = s.size;
     updateNavBadges();

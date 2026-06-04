@@ -41,9 +41,9 @@ const Alerts = (() => {
     saveReadSet(s);
     renderRows(currentAlerts);   // re-render with read styles applied
     Toast.success('All visible alerts marked as read');
-    // Sync dataset.total to the read set size so the badge calculation
-    // resolves to zero even if the dashboard auto-refresh updated the total
-    // in the background while the user was on this page.
+    // Save the acknowledged total so the badge stays clear when the user
+    // navigates back to the dashboard and renderStats() refreshes dataset.total.
+    localStorage.setItem('fp_ack_alerts', String(totalAlerts));
     const ab = document.getElementById('nav-alerts-count');
     if (ab) ab.dataset.total = s.size;
     updateNavBadges();

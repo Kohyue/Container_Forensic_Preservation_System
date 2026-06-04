@@ -16,7 +16,7 @@ const App = (() => {
 
   let currentSection = 'dashboard';
   let refreshTimer   = null;
-  const REFRESH_MS   = 30_000; // auto-refresh every 30 s
+  const REFRESH_MS   = 1_000; // auto-refresh every 1 s on dashboard
 
   function navigate(section) {
     if (!SECTIONS.includes(section)) section = 'dashboard';
