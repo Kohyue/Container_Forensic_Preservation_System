@@ -28,11 +28,13 @@ services:
       - NODE_NAME=local
 
   # A minimal Alpine container used to simulate suspicious activity during testing.
+  # Pre-installs netcat and curl so demo commands work out of the box.
   target:
     image: alpine:3.19
     container_name: target
     restart: unless-stopped
-    command: ["sleep", "infinity"]
+    command: >
+      sh -c "apk add -q netcat-openbsd curl && sleep infinity"
 
 volumes:
   evidence:
