@@ -84,7 +84,10 @@
     (open_read or open_write)
     and container
     and (fd.name = /var/run/docker.sock or
-         fd.name startswith /proc/1/ or
+         fd.name = /proc/1/environ or
+         fd.name = /proc/1/mem or
+         fd.name = /proc/1/maps or
+         fd.name = /proc/1/net/tcp or
          fd.name = /host/etc/shadow)
   output: >
     Possible namespace escape attempt
