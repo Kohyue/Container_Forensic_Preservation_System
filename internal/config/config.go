@@ -20,6 +20,7 @@ type Config struct {
 	Audit      AuditConfig      `yaml:"audit"`
 	Web        WebConfig        `yaml:"web"`
 	Schedule   ScheduleConfig   `yaml:"schedule"`
+	Kubernetes KubernetesConfig `yaml:"kubernetes"`
 }
 
 type WebConfig struct {
@@ -72,6 +73,22 @@ type AuditConfig struct {
 type ScheduleConfig struct {
 	Enabled         bool `yaml:"enabled"`
 	IntervalSeconds int  `yaml:"interval_seconds"`
+}
+
+// KubernetesConfig enables watching Kubernetes pod lifecycle events (crashes,
+// OOMKills, CrashLoopBackOff) and triggering forensic capture automatically.
+type KubernetesConfig struct {
+	// Enabled turns the Kubernetes pod watcher on or off.
+	Enabled bool `yaml:"enabled"`
+	// Kubeconfig is the path to the kubeconfig file.
+	// Leave empty to use the default (~/.kube/config or in-cluster config).
+	Kubeconfig string `yaml:"kubeconfig"`
+	// Namespace restricts watching to a single namespace.
+	// Leave empty to watch all namespaces.
+	Namespace string `yaml:"namespace"`
+	// PollIntervalSeconds controls how often the watcher checks for pod anomalies.
+	// Default: 15 seconds.
+	PollIntervalSeconds int `yaml:"poll_interval_seconds"`
 }
 
 func (c *CollectorConfig) Timeout() time.Duration {
@@ -147,6 +164,10 @@ func defaultConfig() *Config {
 		Schedule: ScheduleConfig{
 			Enabled:         false,
 			IntervalSeconds: 300,
+		},
+		Kubernetes: KubernetesConfig{
+			Enabled:             false,
+			PollIntervalSeconds: 15,
 		},
 	}
 }

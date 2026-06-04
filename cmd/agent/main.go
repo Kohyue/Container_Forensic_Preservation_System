@@ -78,6 +78,10 @@ func main() {
 	// Container exit watcher: captures volatile data when a container terminates.
 	go runContainerWatcher(ctx, cfg, logger, auditLog)
 
+	// Kubernetes pod lifecycle watcher: captures forensic data on pod crashes,
+	// OOMKills, and CrashLoopBackOff events. No-op when kubernetes.enabled = false.
+	go runKubernetesWatcher(ctx, cfg, logger, auditLog)
+
 	go func() {
 		if err := webSrv.Start(ctx); err != nil {
 			logger.Error("web server error", "err", err)

@@ -38,3 +38,14 @@ schedule:
   # How often (in seconds) the scheduler processes queued alerts.
   # Minimum 10 seconds. Default 300 (5 minutes).
   interval_seconds: 300
+
+kubernetes:
+  # Set to true to watch Kubernetes pod lifecycle events.
+  # Requires kubectl to be installed and configured (kind, minikube, or real cluster).
+  enabled: false
+  # Path to kubeconfig file. Leave empty to use the default (~/.kube/config).
+  kubeconfig: ""
+  # Namespace to watch. Leave empty to watch all namespaces.
+  namespace: ""
+  # How often (seconds) to poll for pod anomalies. Default: 15.
+  poll_interval_seconds: 15
