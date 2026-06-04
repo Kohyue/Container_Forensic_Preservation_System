@@ -24,9 +24,10 @@
   condition: >
     open_read
     and container
-    and fd.name in (/etc/shadow, /etc/passwd, /etc/sudoers,
-                    /proc/keys, /proc/key-users, /root/.ssh/id_rsa,
-                    /root/.ssh/authorized_keys)
+    and (fd.name in (/etc/shadow, /etc/gshadow, /etc/master.passwd,
+                     /etc/sudoers, /proc/keys, /proc/key-users,
+                     /root/.ssh/id_rsa, /root/.ssh/authorized_keys)
+         or fd.name startswith /root/.ssh/)
   output: >
     Sensitive file read in container
     (container_id=%container.id container_name=%container.name
@@ -35,12 +36,12 @@
   tags: [credentials, container, forensic]
 
 - rule: Unexpected Network Outbound in Container
-  desc: A container initiated a new outbound TCP connection on an unexpected port.
+  desc: A container initiated a new outbound TCP connection to a non-standard port.
   condition: >
     outbound
     and container
-    and not fd.sport in (80, 443, 8080, 8443)
-    and fd.sip != "127.0.0.1"
+    and not fd.rport in (80, 443, 8080, 8443, 53)
+    and fd.rip != "127.0.0.1"
   output: >
     Unexpected outbound connection from container
     (container_id=%container.id container_name=%container.name
