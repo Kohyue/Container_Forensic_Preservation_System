@@ -21,6 +21,7 @@ services:
       - ../configs/config.yaml:/etc/forensic-agent/config.yaml:ro
       - evidence:/var/forensics
       - /var/run/docker.sock:/var/run/docker.sock
+      - ${HOME}/.kube:/root/.kube:ro
     ports:
       - "8765:8765"
       - "8080:8080"
