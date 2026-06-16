@@ -439,8 +439,11 @@ func (s *Server) handleContainers(w http.ResponseWriter, r *http.Request) {
 			continue
 		}
 		name := strings.TrimPrefix(raw.Names, "/")
-		// Exclude the agent and Falco from the monitored list.
-		if name == "forensic-agent" || name == "falco" {
+		// Exclude the agent, Falco, and Kubernetes infrastructure containers.
+		if name == "forensic-agent" || name == "falco" ||
+			strings.Contains(name, "control-plane") ||
+			strings.Contains(name, "etcd") ||
+			strings.HasSuffix(name, "-worker") {
 			continue
 		}
 		shortID := raw.ID
