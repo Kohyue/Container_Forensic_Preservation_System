@@ -244,6 +244,13 @@ const Settings = (() => {
       localStorage.removeItem('fp_read_evidence');
       localStorage.removeItem('fp_ack_alerts');
       localStorage.removeItem('fp_ack_evidence');
+      // Zero out the cached totals on the badge elements so updateNavBadges()
+      // immediately clears the sidebar without waiting for the next API poll.
+      const ab = document.getElementById('nav-alerts-count');
+      const eb = document.getElementById('nav-evidence-count');
+      if (ab) ab.dataset.total = '0';
+      if (eb) eb.dataset.total = '0';
+      updateNavBadges();
       hideResetConfirm();
       Toast.success(
         `System reset complete — ${result.deleted_packages} package(s) and all alerts deleted.`

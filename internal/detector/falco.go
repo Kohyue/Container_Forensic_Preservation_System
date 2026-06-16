@@ -19,6 +19,7 @@ type Server struct {
 	handler     AlertHandler
 	logger      *slog.Logger
 	httpServer  *http.Server
+	ctx         context.Context // set in Start; used for handler goroutines
 }
 
 func NewServer(addr, minPriority string, handler AlertHandler, logger *slog.Logger) *Server {
@@ -50,6 +51,7 @@ func (s *Server) Start(ctx context.Context) error {
 		defer cancel()
 		_ = s.httpServer.Shutdown(shutCtx)
 	}()
+	s.ctx = ctx
 	s.logger.Info("detector webhook server starting", "addr", s.addr)
 	if err := s.httpServer.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 		return err
@@ -92,6 +94,6 @@ func (s *Server) handleAlert(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 		return
 	}
-	go s.handler(r.Context(), &alert)
+	go s.handler(s.ctx, &alert)
 	w.WriteHeader(http.StatusAccepted)
 }
