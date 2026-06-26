@@ -43,13 +43,11 @@ const Dashboard = (() => {
   function renderStatus(s) {
     const dot   = document.getElementById('status-dot');
     const label = document.getElementById('status-label');
-    const node  = document.getElementById('stat-node');
     const uptEl = document.getElementById('uptime-text');
     const statEl= document.getElementById('stat-status');
 
     dot.className   = 'status-dot active';
     label.textContent = 'Active';
-    node.textContent  = s.node_name || '—';
     uptEl.textContent = fmtUptime(s.uptime_seconds);
     statEl.textContent = 'ACTIVE';
     statEl.style.color = 'var(--green)';
